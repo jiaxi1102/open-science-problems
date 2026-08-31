@@ -38,10 +38,10 @@ jobs:
         run: lake update
       - name: Download mathlib cache
         run: lake exe cache get
-      - name: Elaborate and kernel-check
+      - name: Build all declared proof modules
+        run: lake build
+      - name: Direct Lean recheck
         run: |
           lake env lean QFibonomial4.lean
           lake env lean QFibonomial4All.lean
           lake env lean QFibonomial4Series.lean
-      - name: Build target
-        run: lake build
