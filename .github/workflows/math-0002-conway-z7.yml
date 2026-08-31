@@ -12,13 +12,32 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Regenerate the exact Lean formula
+        shell: bash
+        working-directory: problems/math-0002-conway-99-z7/formal
+        run: |
+          python3 generate_lean.py
+          sha256sum ConwayZ7.lean
+
+      - name: Commit deterministic generated source
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          if ! git diff --quiet -- problems/math-0002-conway-99-z7/formal/ConwayZ7.lean; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add problems/math-0002-conway-99-z7/formal/ConwayZ7.lean
+            git commit -m "math-0002: regenerate exact Lean certificate"
+            git push
+          fi
 
       - name: Reject unfinished proof markers
         shell: bash
@@ -42,6 +61,4 @@ jobs:
           leanchecker-args: "ConwayZ7"
           axiom-audit: true
           axiom-audit-root: ConwayZ7
-          # `native_decide` intentionally trusts Lean's native-code evaluator.
-          # Keep that generated axiom explicit rather than silently disabling audit.
-          axiom-audit-allow: "propext,Classical.choice,Quot.sound,ConwayZ7.quotientCasesUnsat._native.native_decide.ax_1_1"
+          axiom-audit-allow: "propext,Classical.choice,Quot.sound"
