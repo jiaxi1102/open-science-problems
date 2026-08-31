@@ -1,0 +1,44 @@
+name: math-0003 q-rious Lean verification
+
+on:
+  push:
+    branches:
+      - research/math-0003-q-rious-counterexample
+    paths:
+      - problems/math-0003-q-rious-unimodality/formal/**
+      - .github/workflows/math-0003-q-rious.yml
+  pull_request:
+    paths:
+      - problems/math-0003-q-rious-unimodality/formal/**
+      - .github/workflows/math-0003-q-rious.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: problems/math-0003-q-rious-unimodality/formal
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install elan
+        run: |
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Resolve dependencies
+        run: lake update
+      - name: Download mathlib cache
+        run: lake exe cache get
+      - name: Reject unfinished proof markers
+        run: |
+          if grep -nE '\b(sorry|admit)\b' QRiousCounterexample.lean; then
+            echo "Unfinished proof marker found"
+            exit 1
+          fi
+      - name: Elaborate and kernel-check proof
+        run: lake env lean QRiousCounterexample.lean
+      - name: Build target
+        run: lake build QRiousCounterexample
