@@ -120,6 +120,10 @@ theorem delta_nonnegative_large
         rw [Nat.cast_sub hxk] at hhix
         rw [Nat.cast_sub hyk] at hhiy
         rw [Nat.cast_sub hlast] at hlolast
+        have hlastCast :
+            ((2 * x + y : ℕ) : ℤ) = 2 * (x : ℤ) + (y : ℤ) := by
+          norm_num
+        rw [hlastCast] at hlolast
         have hbracket :
             1 ≤ 3 * (x : ℤ) + 4 * (y : ℤ) - 2 * (k : ℤ) - 6 := by
           omega
@@ -131,9 +135,21 @@ theorem delta_nonnegative_large
                 ((3 * (x : ℤ) + 4 * (y : ℤ) - 2 * (k : ℤ) - 6) - 1) :=
             mul_nonneg (by omega) (by omega)
           nlinarith
+        have hidentity :
+            zquad (k : ℤ) - zquad ((k : ℤ) - (x : ℤ)) -
+                zquad ((k : ℤ) - (y : ℤ)) +
+                zquad ((k : ℤ) - (2 * (x : ℤ) + (y : ℤ))) =
+              (x : ℤ) *
+                (3 * (x : ℤ) + 4 * (y : ℤ) - 2 * (k : ℤ) - 6) := by
+          unfold zquad
+          ring
+        have hscaled :
+            0 ≤ 12 * (g k : ℤ) - 12 * (g (k - x) : ℤ) -
+                12 * (g (k - y) : ℤ) +
+                12 * (g (k - (2 * x + y)) : ℤ) := by
+          linarith [hlo, hhix, hhiy, hlolast, hidentity, hprod, hxZ]
         simp [delta, shiftedG, hxk, hyk, hlast]
-        unfold zquad at hlo hhix hhiy hlolast
-        nlinarith
+        linarith
 
 /-- The Fibonacci specialization of the large-case hypotheses. -/
 lemma fibonacci_large_hypotheses (m : ℕ) (hm : 8 ≤ m) :
