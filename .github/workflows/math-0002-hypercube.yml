@@ -1,0 +1,44 @@
+name: math-0002 hypercube Lean verification
+
+on:
+  push:
+    paths:
+      - problems/math-0002-hypercube-isolation/formal/**
+      - .github/workflows/math-0002-hypercube.yml
+  pull_request:
+    paths:
+      - problems/math-0002-hypercube-isolation/formal/**
+      - .github/workflows/math-0002-hypercube.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reject unfinished proof markers
+        shell: bash
+        working-directory: problems/math-0002-hypercube-isolation/formal
+        run: |
+          if grep -nE '\b(sorry|admit)\b' HypercubeIsolation.lean; then
+            echo "Unfinished proof marker found"
+            exit 1
+          fi
+
+      - name: Build and check compiled environment
+        uses: leanprover/lean-action@v1
+        env:
+          LEAN_NUM_THREADS: "1"
+        with:
+          lake-package-directory: problems/math-0002-hypercube-isolation/formal
+          build: true
+          test: false
+          lint: false
+          leanchecker: true
+          leanchecker-args: "HypercubeIsolation"
+          axiom-audit: false
