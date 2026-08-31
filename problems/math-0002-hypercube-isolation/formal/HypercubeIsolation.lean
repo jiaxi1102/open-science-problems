@@ -135,7 +135,7 @@ theorem isolatingWitnessQ6_valid : q2IsolatingQ6 isolatingWitnessQ6 = true := by
 
 /-- No four vertices form a Q_2-isolating set in Q_6. -/
 theorem noFourVertexQ2IsolatingQ6 : existsFourVertexQ2IsolatingQ6 = false := by
-  native_decide
+  decide_cbv
 
 /-- The complete finite certificate. -/
 theorem counterexample_certificate :
