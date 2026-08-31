@@ -58,6 +58,7 @@ def generate() -> str:
         "",
         "set_option maxRecDepth 1000000 in",
         "set_option maxHeartbeats 0 in",
+        "set_option sat.timeout 1800 in",
         "theorem noReducedOrbitMatrix",
     ]
 
