@@ -9,6 +9,7 @@ The repository is deliberately conservative about claims. A computational result
 | ID | Problem | Field | Status | Formal verification | External validation |
 |---|---|---|---|---|---|
 | `math-0001` | Hedgehog plucking-polynomial unimodality (Conjecture 4.1) | algebraic combinatorics / knot theory | `proposed-proof` | Lean 4 proof of stronger coefficient theorem | pending |
+| `math-0002` | Hypercube `Q_k`-isolation equality (Problem 2) | domination theory / hypercubes | `refuted` (proposed counterexample) | Lean 4 finite certificate + independent exhaustive search | pending |
 
 See [`PROBLEMS.md`](PROBLEMS.md) for the registry and [`CONTRIBUTING.md`](CONTRIBUTING.md) for the required structure and claim standards.
 
@@ -17,6 +18,7 @@ See [`PROBLEMS.md`](PROBLEMS.md) for the registry and [`CONTRIBUTING.md`](CONTRI
 ```text
 problems/
   math-0001-hedgehog-unimodality/
+  math-0002-hypercube-isolation/
     README.md          # problem statement, provenance, status, scope
     proof/             # human-readable proof and derivations
     formal/            # Lean/Coq/Isabelle/etc. certificate
@@ -51,6 +53,8 @@ templates/
 6. Prefer small independently checkable certificates over opaque computation.
 7. Never label a result "solved" solely because CI is green.
 
-## Current flagship result
+## Current results
 
 `math-0001` contains a proposed proof of hedgehog plucking-polynomial unimodality for delays in `{1,2}`. The formal component proves a stronger zero-one coefficient theorem in Lean; the bridge to the original plucking-polynomial conjecture currently relies on the published factorization (Proposition 2.5) and is documented as such.
+
+`math-0002` gives a proposed new counterexample to the universal hypercube isolation equality: `ι(Q_6,Q_2)=5>4=γ(Q_4)`. It includes a short human proof, a Lean 4 finite certificate, an independent Python enumeration, a logged prior-art search, and an explicit account of the `native_decide` trust boundary. Priority and correctness have not yet been externally confirmed.
