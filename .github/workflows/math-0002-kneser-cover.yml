@@ -27,7 +27,7 @@ jobs:
         run: |
           python generate_lean.py
           python finalize_lean.py
-          echo "4e0cb3a700c7c9676c9d2fa54ef89d1fae8cf9a20af42299e601c7e7e0bcb2da  KneserCover.lean" | sha256sum -c -
+          echo "e23a0bd490a76c91e4e376f12e5aed8689e1745dfc3d842fa281eabaa7bb2522  KneserCover.lean" | sha256sum -c -
 
       - name: Reject unfinished proof markers
         shell: bash
