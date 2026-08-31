@@ -1,13 +1,15 @@
-name: math-0001 hedgehog Lean verification
+name: math-0001 hedgehog verification
 
 on:
   push:
     paths:
       - problems/math-0001-hedgehog-unimodality/formal/**
+      - problems/math-0001-hedgehog-unimodality/experiments/**
       - .github/workflows/math-0001-hedgehog.yml
   pull_request:
     paths:
       - problems/math-0001-hedgehog-unimodality/formal/**
+      - problems/math-0001-hedgehog-unimodality/experiments/**
       - .github/workflows/math-0001-hedgehog.yml
   workflow_dispatch:
 
@@ -19,6 +21,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Exhaustively cross-check recursive semantics and factorization
+        run: >-
+          python3
+          problems/math-0001-hedgehog-unimodality/experiments/crosscheck.py
+          --max-leaves 12
 
       - name: Reject unfinished proof markers
         shell: bash
