@@ -39,7 +39,7 @@ jobs:
           test: false
           lint: false
           leanchecker: true
-          leanchecker-args: "HedgehogStar"
+          leanchecker-args: "HedgehogRecursive"
           axiom-audit: true
           axiom-audit-root: Hedgehog
           axiom-audit-allow: "propext,Classical.choice,Quot.sound"
