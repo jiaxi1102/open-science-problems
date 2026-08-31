@@ -76,14 +76,14 @@ theorem central_coefficients :
   constructor
   · have h := candidateQ_coeff_succ 9
     norm_num [candidateD] at h
-    simpa using h
+    simpa [Polynomial.coeff_one, Polynomial.coeff_X] using h
   · constructor
     · have h := candidateQ_coeff_succ 11
       norm_num [candidateD] at h
-      simpa using h
+      simpa [Polynomial.coeff_one, Polynomial.coeff_X] using h
     · have h := candidateQ_coeff_succ 13
       norm_num [candidateD] at h
-      simpa using h
+      simpa [Polynomial.coeff_one, Polynomial.coeff_X] using h
 
 /-- The polynomial `(1+q)D(q)` is not unimodal. -/
 theorem candidateQ_not_unimodal : ¬ CoeffUnimodal candidateQ := by
