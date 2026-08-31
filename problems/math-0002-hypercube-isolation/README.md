@@ -50,6 +50,8 @@ The Lean file [`formal/HypercubeIsolation.lean`](formal/HypercubeIsolation.lean)
 
 The first three facts use kernel reduction. The exhaustive fourth fact uses Lean's `native_decide`, so it carries one explicit generated native-computation axiom whose proposition is auditable. The same enumeration is independently implemented in Python in [`experiments/discover.py`](experiments/discover.py). This formalization is therefore classified as `theorem-verified`, not `end-to-end-verified`: the elementary lemma that every `Q_2` copy is a coordinate square is documented in the human proof rather than formalized in a graph library.
 
+The green workflow run, checked commit, and exact axiom report are recorded in [`artifacts/CI.md`](artifacts/CI.md).
+
 Build:
 
 ```bash
