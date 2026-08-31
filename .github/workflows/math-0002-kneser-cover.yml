@@ -17,7 +17,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -27,7 +27,7 @@ jobs:
         run: |
           python generate_lean.py
           python finalize_lean.py
-          echo "78cf63d3f7ab3a96d21d7b161d597af184d4f09ff3286a2484aee3e474d1f37a  KneserCover.lean" | sha256sum -c -
+          echo "143b3fdcb75423e419eb10d1ce7c8f9fbc700f22a0cd4d55d65e27950c0667e9  KneserCover.lean" | sha256sum -c -
 
       - name: Reject unfinished or hand-written axiomatic shortcuts
         shell: bash
