@@ -13,6 +13,10 @@ on:
       - .github/workflows/math-0002-q-fibonomial-n4.yml
   workflow_dispatch:
 
+concurrency:
+  group: math-0002-q-fibonomial-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -39,7 +43,7 @@ jobs:
           test: false
           lint: false
           leanchecker: true
-          leanchecker-args: "QFibonomial4 QFibonomial4All QFibonomial4Series"
+          leanchecker-args: "QFibonomial4 QFibonomial4All QFibonomial4Series QFibonomial4PowerSeries QFibonomial4Unimodal QFibonomial4Rational"
           axiom-audit: true
           axiom-audit-root: QFibonomial4
           axiom-audit-allow: "propext,Classical.choice,Quot.sound"
