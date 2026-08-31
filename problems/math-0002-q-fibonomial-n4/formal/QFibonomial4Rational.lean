@@ -14,6 +14,8 @@ namespace QFibonomial4
 
 open PowerSeries
 
+noncomputable section
+
 lemma X_linear_monomial (x y a b : ℕ) :
     ((X : PowerSeries ℤ) ^ x) ^ a * ((X : PowerSeries ℤ) ^ y) ^ b =
       X ^ (a * x + b * y) := by
@@ -193,5 +195,7 @@ theorem fibQCoeff_unimodal_of_symmetry
 #print axioms qFib4Series_rational_identity
 #print axioms fibQCoeff_difference_firstHalf
 #print axioms fibQCoeff_unimodal_of_symmetry
+
+end
 
 end QFibonomial4
