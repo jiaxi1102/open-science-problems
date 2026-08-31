@@ -6,7 +6,7 @@ import QFibonomial4
 The symbolic argument in `QFibonomial4.lean` handles every `m >= 8`.
 The eight smaller values are finite and are checked here by explicit bounded
 case analysis and `norm_num`, so the resulting theorem is checked by Lean's
-kernel without a native-evaluation axiom.  Combining the two gives the reduced
+kernel without native code evaluation.  Combining the two gives the reduced
 first-difference inequality for every Fibonacci index.
 -/
 
@@ -20,8 +20,9 @@ theorem fibonacci_delta_nonnegative_small
     0 ≤ delta (Nat.fib (m + 1)) (Nat.fib (m + 2)) k := by
   have hk96 : k ≤ 96 := by
     interval_cases m <;> norm_num [Nat.fib] at hk ⊢ <;> omega
-  interval_cases m <;> interval_cases k <;>
-    norm_num [Nat.fib, delta, shiftedG, g, quad] at hk ⊢
+  interval_cases m
+  all_goals interval_cases k
+  all_goals norm_num [Nat.fib, delta, shiftedG, g, quad] at hk ⊢
 
 /--
 For every Fibonacci index, all reduced first differences through the center
