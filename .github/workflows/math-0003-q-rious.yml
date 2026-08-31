@@ -19,26 +19,29 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: problems/math-0003-q-rious-unimodality/formal
     steps:
       - uses: actions/checkout@v4
-      - name: Install elan
-        run: |
-          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y
-          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
-      - name: Resolve dependencies
-        run: lake update
-      - name: Download mathlib cache
-        run: lake exe cache get
+
       - name: Reject unfinished proof markers
+        shell: bash
+        working-directory: problems/math-0003-q-rious-unimodality/formal
         run: |
           if grep -nE '\b(sorry|admit)\b' QRiousCounterexample.lean; then
             echo "Unfinished proof marker found"
             exit 1
           fi
-      - name: Elaborate and kernel-check proof
-        run: lake env lean QRiousCounterexample.lean
-      - name: Build target
-        run: lake build QRiousCounterexample
+
+      - name: Build, audit axioms, and check compiled environment
+        uses: leanprover/lean-action@v1
+        env:
+          LEAN_NUM_THREADS: "1"
+        with:
+          lake-package-directory: problems/math-0003-q-rious-unimodality/formal
+          build: true
+          test: false
+          lint: false
+          leanchecker: true
+          leanchecker-args: "QRiousCounterexample"
+          axiom-audit: true
+          axiom-audit-root: QRiousCounterexample
+          axiom-audit-allow: propext,Classical.choice,Quot.sound
