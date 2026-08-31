@@ -58,7 +58,12 @@ produces the same coefficient sequence. -/
 theorem window_eligibleSum (r n : ℕ) (ε : ℕ → Bool) (a : ℤ → ℤ) (k : ℤ) :
     Window r (EligibleSum n ε a) k =
       EligibleSum n ε (Window r a) k := by
-  simp only [EligibleSum]
+  change
+    Window r
+      (fun x => ∑ i ∈ Finset.range n,
+        if ε i then a (x - (i : ℤ)) else 0) k =
+      ∑ i ∈ Finset.range n,
+        if ε i then Window r a (k - (i : ℤ)) else 0
   rw [window_finset_sum]
   apply Finset.sum_congr rfl
   intro i hi
