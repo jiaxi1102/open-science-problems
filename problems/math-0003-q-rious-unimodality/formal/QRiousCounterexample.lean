@@ -63,13 +63,27 @@ theorem qFactorial_quotient_certificate :
   norm_num [qFactorial, qNat, candidateD, Finset.sum_range_succ]
   ring
 
+/-- Multiplication by `1+q` adds two adjacent coefficients. -/
+lemma candidateQ_coeff_succ (n : ℕ) :
+    candidateQ.coeff (n + 1) = candidateD.coeff (n + 1) + candidateD.coeff n := by
+  simp [candidateQ, add_mul]
+
 /-- The three coefficients witnessing the central valley. -/
 theorem central_coefficients :
     candidateQ.coeff 10 = 16 ∧
     candidateQ.coeff 12 = 14 ∧
     candidateQ.coeff 14 = 16 := by
-  norm_num [candidateQ, candidateD, Polynomial.coeff_mul,
-    Finset.Nat.sum_antidiagonal_eq_sum_range_succ]
+  constructor
+  · have h := candidateQ_coeff_succ 9
+    norm_num [candidateD] at h ⊢
+    exact h
+  · constructor
+    · have h := candidateQ_coeff_succ 11
+      norm_num [candidateD] at h ⊢
+      exact h
+    · have h := candidateQ_coeff_succ 13
+      norm_num [candidateD] at h ⊢
+      exact h
 
 /-- The polynomial `(1+q)D(q)` is not unimodal. -/
 theorem candidateQ_not_unimodal : ¬ CoeffUnimodal candidateQ := by
