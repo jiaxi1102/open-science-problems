@@ -17,7 +17,7 @@ namespace QFibonomial4
 open PowerSeries
 
 /-- The partition generating series with coefficients `g n`. -/
-def partitionSeries : PowerSeries ℤ :=
+noncomputable def partitionSeries : PowerSeries ℤ :=
   PowerSeries.mk fun n => (g n : ℤ)
 
 @[simp]
@@ -26,11 +26,12 @@ theorem coeff_partitionSeries (n : ℕ) :
   simp [partitionSeries]
 
 /-- The denominator `(1-X)(1-X^2)(1-X^3)`. -/
-def partitionDenominator : PowerSeries ℤ :=
+noncomputable def partitionDenominator : PowerSeries ℤ :=
   (1 - X) * (1 - X ^ 2) * (1 - X ^ 3)
 
 lemma partitionDenominator_expansion :
-    partitionDenominator = 1 - X - X ^ 2 + X ^ 4 + X ^ 5 - X ^ 6 := by
+    partitionDenominator =
+      1 - X ^ 1 - X ^ 2 + X ^ 4 + X ^ 5 - X ^ 6 := by
   unfold partitionDenominator
   ring
 
@@ -41,7 +42,7 @@ lemma coeff_partitionSeries_mul_X_pow (n s : ℕ) :
 
 lemma partition_product_expansion :
     partitionSeries * partitionDenominator =
-      partitionSeries - partitionSeries * X - partitionSeries * X ^ 2 +
+      partitionSeries - partitionSeries * X ^ 1 - partitionSeries * X ^ 2 +
         partitionSeries * X ^ 4 + partitionSeries * X ^ 5 -
           partitionSeries * X ^ 6 := by
   rw [partitionDenominator_expansion]
@@ -54,7 +55,8 @@ theorem partitionSeries_mul_denominator :
   ext n
   by_cases hn : n = 0
   · subst n
-    norm_num [partitionSeries, shiftedG, g, quad]
+    norm_num [partitionSeries, shiftedG, g, quad,
+      PowerSeries.coeff_mul_X_pow']
   · have hr := g_denominator_recurrence n (Nat.one_le_iff_ne_zero.mpr hn)
     simp only [map_sub, map_add, coeff_partitionSeries,
       coeff_partitionSeries_mul_X_pow, coeff_one]
