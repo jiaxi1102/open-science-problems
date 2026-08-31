@@ -18,10 +18,8 @@ namespace ConwayZ7
 abbrev Row := List Nat
 
 private def N : Nat := 12
-private def A : List Nat := [0, 1, 2]
-private def C : List Nat := [9, 10, 11]
 
-private def at (xs : List Nat) (i : Nat) : Nat := xs.getD i 0
+private def entry (xs : List Nat) (i : Nat) : Nat := xs.getD i 0
 
 private def dot (xs ys : Row) : Nat :=
   (List.zipWith (· * ·) xs ys).sum
@@ -48,7 +46,7 @@ private def target (i j : Nat) : Nat :=
     12
 
 private def rowOptions (p : Row) (i : Nat) : List Row :=
-  let pi := at p i
+  let pi := entry p i
   let sumA := pi
   let sumC := pi
   let sumM := 12 - 2 * pi
@@ -58,7 +56,7 @@ private def rowOptions (p : Row) (i : Nat) : List Row :=
     (compositions 6 sumM 4).flatMap fun rM =>
       (compositions 3 sumC 4).filterMap fun rC =>
         let r := rA ++ rM ++ rC
-        if at r i = 0 ∧
+        if entry r i = 0 ∧
             dot r r = norm2 ∧
             dot r p = pDot then
           some r
@@ -66,7 +64,7 @@ private def rowOptions (p : Row) (i : Nat) : List Row :=
           none
 
 private def compatible (i : Nat) (ri : Row) (j : Nat) (rj : Row) : Bool :=
-  at ri j = at rj i && dot ri rj + at ri j = target i j
+  entry ri j = entry rj i && dot ri rj + entry ri j = target i j
 
 private def compatibleAssigned
     (assigned : List (Option Row)) (i : Nat) (ri : Row) : Bool :=
