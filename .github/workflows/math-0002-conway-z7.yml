@@ -42,4 +42,6 @@ jobs:
           leanchecker-args: "ConwayZ7"
           axiom-audit: true
           axiom-audit-root: ConwayZ7
-          axiom-audit-allow: "propext,Classical.choice,Quot.sound"
+          # `native_decide` intentionally trusts Lean's native-code evaluator.
+          # Keep that generated axiom explicit rather than silently disabling audit.
+          axiom-audit-allow: "propext,Classical.choice,Quot.sound,ConwayZ7.quotientCasesUnsat._native.native_decide.ax_1_1"
