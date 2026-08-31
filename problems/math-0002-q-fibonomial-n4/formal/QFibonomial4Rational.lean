@@ -21,7 +21,7 @@ lemma X_linear_monomial (x y a b : ℕ) :
       X ^ (a * x + b * y) := by
   rw [← pow_mul, ← pow_mul, ← pow_add]
   congr 1
-  omega
+  simp [Nat.mul_comm]
 
 /-- Numerator of `(1-X)` times the `n=4` q-Fibonomial rational series. -/
 def qFib4Numerator (x y : ℕ) : PowerSeries ℤ :=
@@ -54,14 +54,12 @@ lemma qFib4Numerator_expansion (x y : ℕ) :
     qFib4Numerator x y =
         (1 - A) * (1 - B) * (1 - A * B) * (1 - A * B ^ 2) := by
           rw [qFib4Numerator, hxy, hx2y]
-          rfl
     _ = 1 - A - B + A ^ 2 * B + A * B ^ 3 - A ^ 3 * B ^ 3 -
           A ^ 2 * B ^ 4 + A ^ 3 * B ^ 4 := by ring
     _ = 1 - X ^ x - X ^ y + X ^ (2 * x + y) + X ^ (x + 3 * y) -
           X ^ (3 * x + 3 * y) - X ^ (2 * x + 4 * y) +
             X ^ (3 * x + 4 * y) := by
           rw [h21, h13, h33, h24, h34]
-          rfl
 
 /-- Full coefficient formula for `(1-X)Q`. -/
 def fullDelta (x y k : ℕ) : ℤ :=
@@ -148,7 +146,7 @@ theorem qFib4Coeff_difference_full (x y k : ℕ) (hk : 1 ≤ k) :
   have h := congrArg (PowerSeries.coeff k) (one_sub_X_mul_qFib4Series x y)
   have hleft :
       (1 - X) * qFib4Series x y =
-        qFib4Series x y - qFib4Series x y * X := by ring
+        qFib4Series x y - qFib4Series x y * X ^ 1 := by ring
   rw [hleft, map_sub, PowerSeries.coeff_mul_X_pow',
     coeff_qFib4DifferenceSeries] at h
   simpa [qFib4Coeff, hk] using h
