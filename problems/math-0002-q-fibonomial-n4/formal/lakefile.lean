@@ -12,5 +12,6 @@ lean_lib QFibonomial4 where
     `QFibonomial4,
     `QFibonomial4All,
     `QFibonomial4Series,
+    `QFibonomial4PowerSeries,
     `QFibonomial4Unimodal
   ]
