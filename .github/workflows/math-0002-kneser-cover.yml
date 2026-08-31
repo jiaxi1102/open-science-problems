@@ -26,7 +26,8 @@ jobs:
         working-directory: problems/math-0002-kneser-fractional-cover/formal
         run: |
           python generate_lean.py
-          echo "411d5c14c3805f5d9d9b64054c4bcab7ca5d8070d9e853eddca7bcd75c334100  KneserCover.lean" | sha256sum -c -
+          python finalize_lean.py
+          echo "962edf974e1468c5dd3bae8df3a473b2b637450fc63fbeb6bfee1bc0588c1708  KneserCover.lean" | sha256sum -c -
 
       - name: Reject unfinished proof markers
         shell: bash
