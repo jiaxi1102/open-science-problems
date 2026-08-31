@@ -63,18 +63,19 @@ def fullQ4Mask : Nat := Nat.shiftLeft 1 16 - 1
 def dominatesQ4 (centers : List Nat) : Bool :=
   centers.foldl (fun mask x => Nat.lor mask (ballMaskQ4 x)) 0 == fullQ4Mask
 
+/-- Build the indexed projection mask by structural recursion over coordinate sets. -/
+def q2FaceMaskQ6Aux (vertex : Nat) : List (List Nat) → Nat → Nat
+  | [], _ => 0
+  | coords :: rest, projectionIndex =>
+      let block := Nat.shiftLeft (ballMaskQ4 (project coords vertex)) (16 * projectionIndex)
+      Nat.lor block (q2FaceMaskQ6Aux vertex rest (projectionIndex + 1))
+
 /--
 The 240-bit mask of all coordinate 2-faces of Q_6 hit by the closed neighborhood
 of a single vertex. Block `j` (16 bits) records domination in the `j`th Q_4 projection.
 -/
 def q2FaceMaskQ6 (vertex : Nat) : Nat :=
-  coordinateFourSets.enum.foldl
-    (fun mask entry =>
-      let projectionIndex := entry.1
-      let coords := entry.2
-      let block := Nat.shiftLeft (ballMaskQ4 (project coords vertex)) (16 * projectionIndex)
-      Nat.lor mask block)
-    0
+  q2FaceMaskQ6Aux vertex coordinateFourSets 0
 
 /-- Full coverage mask for all 15 * 16 coordinate 2-faces. -/
 def fullQ2FaceMaskQ6 : Nat := Nat.shiftLeft 1 240 - 1
