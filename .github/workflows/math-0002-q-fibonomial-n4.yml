@@ -19,29 +19,27 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: problems/math-0002-q-fibonomial-n4/formal
     steps:
       - uses: actions/checkout@v4
       - name: Reject unfinished proof markers
+        shell: bash
+        working-directory: problems/math-0002-q-fibonomial-n4/formal
         run: |
-          if grep -nE '\b(sorry|admit|axiom)\b' QFibonomial4.lean QFibonomial4All.lean QFibonomial4Series.lean; then
+          if grep -nE '\b(sorry|admit|axiom)\b' *.lean; then
             echo "Unfinished or added axiom marker found"
             exit 1
           fi
-      - name: Install elan
-        run: |
-          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y
-          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
-      - name: Resolve dependencies
-        run: lake update
-      - name: Download mathlib cache
-        run: lake exe cache get
-      - name: Build all declared proof modules
-        run: lake build
-      - name: Direct Lean recheck
-        run: |
-          lake env lean QFibonomial4.lean
-          lake env lean QFibonomial4All.lean
-          lake env lean QFibonomial4Series.lean
+      - name: Build, audit axioms, and check compiled environment
+        uses: leanprover/lean-action@v1
+        env:
+          LEAN_NUM_THREADS: "1"
+        with:
+          lake-package-directory: problems/math-0002-q-fibonomial-n4/formal
+          build: true
+          test: false
+          lint: false
+          leanchecker: true
+          leanchecker-args: "QFibonomial4 QFibonomial4All QFibonomial4Series"
+          axiom-audit: true
+          axiom-audit-root: QFibonomial4
+          axiom-audit-allow: "propext,Classical.choice,Quot.sound"
