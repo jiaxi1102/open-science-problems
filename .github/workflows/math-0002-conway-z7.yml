@@ -1,0 +1,45 @@
+name: math-0002 Conway Z7 Lean verification
+
+on:
+  push:
+    paths:
+      - problems/math-0002-conway-99-z7/formal/**
+      - .github/workflows/math-0002-conway-z7.yml
+  pull_request:
+    paths:
+      - problems/math-0002-conway-99-z7/formal/**
+      - .github/workflows/math-0002-conway-z7.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reject unfinished proof markers
+        shell: bash
+        working-directory: problems/math-0002-conway-99-z7/formal
+        run: |
+          if grep -nE '\b(sorry|admit)\b' ConwayZ7.lean; then
+            echo "Unfinished proof marker found"
+            exit 1
+          fi
+
+      - name: Build, audit axioms, and check compiled environment
+        uses: leanprover/lean-action@v1
+        env:
+          LEAN_NUM_THREADS: "1"
+        with:
+          lake-package-directory: problems/math-0002-conway-99-z7/formal
+          build: true
+          test: false
+          lint: false
+          leanchecker: true
+          leanchecker-args: "ConwayZ7"
+          axiom-audit: true
+          axiom-audit-root: ConwayZ7
+          axiom-audit-allow: "propext,Classical.choice,Quot.sound"
