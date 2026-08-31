@@ -35,7 +35,7 @@ theorem g_denominator_recurrence (n : ℕ) (hn : 1 ≤ n) :
   induction n using Nat.strong_induction_on with
   | h n ih =>
       by_cases hn12 : n < 12
-      · interval_cases n <;> native_decide
+      · interval_cases n <;> norm_num [g, quad, shiftedG]
       · have hn12' : 12 ≤ n := by omega
         have ih6 := ih (n - 6) (by omega) (by omega)
         simp [shiftedG, show 1 ≤ n - 6 by omega,
@@ -43,22 +43,34 @@ theorem g_denominator_recurrence (n : ℕ) (hn : 1 ≤ n) :
           show 5 ≤ n - 6 by omega, show 6 ≤ n - 6 by omega] at ih6
         have h0Nat : g n = g (n - 6) + n := by
           have hstep := g_add_six (n - 6)
-          convert hstep using 1 <;> omega
+          have hidx : n - 6 + 6 = n := by omega
+          rw [hidx] at hstep
+          omega
         have h1Nat : g (n - 1) = g (n - 7) + (n - 1) := by
           have hstep := g_add_six (n - 7)
-          convert hstep using 1 <;> omega
+          have hidx : n - 7 + 6 = n - 1 := by omega
+          rw [hidx] at hstep
+          omega
         have h2Nat : g (n - 2) = g (n - 8) + (n - 2) := by
           have hstep := g_add_six (n - 8)
-          convert hstep using 1 <;> omega
+          have hidx : n - 8 + 6 = n - 2 := by omega
+          rw [hidx] at hstep
+          omega
         have h4Nat : g (n - 4) = g (n - 10) + (n - 4) := by
           have hstep := g_add_six (n - 10)
-          convert hstep using 1 <;> omega
+          have hidx : n - 10 + 6 = n - 4 := by omega
+          rw [hidx] at hstep
+          omega
         have h5Nat : g (n - 5) = g (n - 11) + (n - 5) := by
           have hstep := g_add_six (n - 11)
-          convert hstep using 1 <;> omega
+          have hidx : n - 11 + 6 = n - 5 := by omega
+          rw [hidx] at hstep
+          omega
         have h6Nat : g (n - 6) = g (n - 12) + (n - 6) := by
           have hstep := g_add_six (n - 12)
-          convert hstep using 1 <;> omega
+          have hidx : n - 12 + 6 = n - 6 := by omega
+          rw [hidx] at hstep
+          omega
         have h0 : (g n : ℤ) = (g (n - 6) : ℤ) + (n : ℤ) := by
           exact_mod_cast h0Nat
         have h1 : (g (n - 1) : ℤ) = (g (n - 7) : ℤ) + (n - 1 : ℕ) := by
@@ -76,7 +88,7 @@ theorem g_denominator_recurrence (n : ℕ) (hn : 1 ≤ n) :
         omega
 
 /-- Constant coefficient of the denominator product. -/
-theorem g_initial : g 0 = 1 := by native_decide
+theorem g_initial : g 0 = 1 := by norm_num [g, quad]
 
 #print axioms g_add_six
 #print axioms g_denominator_recurrence
