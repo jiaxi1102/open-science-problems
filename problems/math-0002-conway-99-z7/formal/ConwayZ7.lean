@@ -18,6 +18,7 @@ private abbrev w (x : BitVec 3) : BitVec 10 := BitVec.zeroExtend 10 x
 
 set_option maxRecDepth 1000000 in
 set_option maxHeartbeats 0 in
+set_option sat.timeout 1800 in
 theorem noReducedOrbitMatrix
     (x_0_0 x_0_1 x_0_2 x_0_3 x_0_4 x_0_5 : BitVec 3)
     (x_0_6 x_0_7 x_0_8 x_0_9 x_0_10 x_0_11 : BitVec 3)
