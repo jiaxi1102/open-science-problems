@@ -24,7 +24,7 @@ jobs:
         shell: bash
         working-directory: problems/math-0001-hedgehog-unimodality/formal
         run: |
-          if grep -nE '\b(sorry|admit)\b' Hedgehog.lean; then
+          if grep -RInE '\b(sorry|admit)\b' --include='*.lean' .; then
             echo "Unfinished proof marker found"
             exit 1
           fi
@@ -39,7 +39,7 @@ jobs:
           test: false
           lint: false
           leanchecker: true
-          leanchecker-args: "Hedgehog"
+          leanchecker-args: "HedgehogStar"
           axiom-audit: true
           axiom-audit-root: Hedgehog
           axiom-audit-allow: "propext,Classical.choice,Quot.sound"
