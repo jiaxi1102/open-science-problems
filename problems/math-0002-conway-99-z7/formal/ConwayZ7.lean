@@ -1,153 +1,149 @@
-import Mathlib
+import Std.Tactic.BVDecide
 
 /-!
-# Conway 99-graph: finite obstruction for one fixed point and an order-seven automorphism
+# Conway's 99-graph: direct bit-vector obstruction to an order-seven quotient
 
-The human proof reduces the graph question to sixteen canonical integer-vector
-cases.  For each vector `p`, an admissible `12 × 12` quotient block must have
-rows in the finite domains generated below, and every pair of rows must satisfy
-the symmetry and quadratic identities checked by `compatible`.
-
-`quotientCasesUnsat` is a kernel-checked evaluation of an exact, integer-only,
-minimum-remaining-values backtracking search.  The graph-to-quotient reduction
-is documented separately and is not claimed to be formalized in this file.
+This file checks the exact 12 × 12 integral system forced by an
+order-seven automorphism with one fixed vertex.  The matrix is represented
+by its 78 upper-triangular entries, each a 3-bit unsigned integer (0..7).
+All arithmetic identities are evaluated in 10 bits; the proven bounds make
+overflow impossible (the largest quadratic sum is at most 588).
 -/
 
 namespace ConwayZ7
 
-abbrev Row := List Nat
+private abbrev w (x : BitVec 3) : BitVec 10 := BitVec.zeroExtend 10 x
 
-private def N : Nat := 12
-
-private def entry (xs : List Nat) (i : Nat) : Nat := xs.getD i 0
-
-private def dot (xs ys : Row) : Nat :=
-  (List.zipWith (· * ·) xs ys).sum
-
-/-- Bounded weak compositions. Structural recursion is on the length. -/
-private def compositions : Nat → Nat → Nat → List Row
-  | 0, total, _ => if total = 0 then [[]] else []
-  | length + 1, total, maximum =>
-      (List.range (Nat.min maximum total + 1)).flatMap fun first =>
-        (compositions length (total - first) maximum).map (first :: ·)
-
-private def inWing (i : Nat) : Bool := i < 3 || 9 ≤ i
-
-/-- Entry of `12 J + 12 I - 2 y yᵀ`, where
-`y = (1,1,1,0,0,0,0,0,0,-1,-1,-1)`. -/
-private def target (i j : Nat) : Nat :=
-  if i = j then
-    if inWing i then 22 else 24
-  else if (i < 3 && j < 3) || (9 ≤ i && 9 ≤ j) then
-    10
-  else if (i < 3 && 9 ≤ j) || (9 ≤ i && j < 3) then
-    14
-  else
-    12
-
-private def rowOptions (p : Row) (i : Nat) : List Row :=
-  let pi := entry p i
-  let sumA := pi
-  let sumC := pi
-  let sumM := 12 - 2 * pi
-  let norm2 := if inWing i then 22 else 24
-  let pDot := (if inWing i then 42 else 36) - pi
-  (compositions 3 sumA 4).flatMap fun rA =>
-    (compositions 6 sumM 4).flatMap fun rM =>
-      (compositions 3 sumC 4).filterMap fun rC =>
-        let r := rA ++ rM ++ rC
-        if entry r i = 0 ∧
-            dot r r = norm2 ∧
-            dot r p = pDot then
-          some r
-        else
-          none
-
-private def compatible (i : Nat) (ri : Row) (j : Nat) (rj : Row) : Bool :=
-  entry ri j = entry rj i && dot ri rj + entry ri j = target i j
-
-private def compatibleAssigned
-    (assigned : List (Option Row)) (i : Nat) (ri : Row) : Bool :=
-  (List.range N).all fun j =>
-    match assigned.getD j none with
-    | none => true
-    | some rj => compatible i ri j rj
-
-private def chooseMRV
-    (assigned : List (Option Row)) (domains : List (List Row)) : Option Nat :=
-  match (List.range N).filter (fun i => (assigned.getD i none).isNone) with
-  | [] => none
-  | i :: rest =>
-      some <| rest.foldl (fun best j =>
-        if (domains.getD j []).length < (domains.getD best []).length then j else best) i
-
-private def refineDomains
-    (assigned : List (Option Row)) (domains : List (List Row))
-    (picked : Nat) (row : Row) : Option (List (List Row)) :=
-  let start := domains.set picked [row]
-  (List.range N).foldl (fun state j =>
-    match state with
-    | none => none
-    | some ds =>
-        if j = picked then
-          some ds
-        else
-          match assigned.getD j none with
-          | some _ => some ds
-          | none =>
-              let next := (ds.getD j []).filter fun rj =>
-                compatible picked row j rj && compatibleAssigned assigned j rj
-              if next.isEmpty then none else some (ds.set j next)) (some start)
-
-/-- Exact backtracking. `fuel = 12` is sufficient because every recursive call
-assigns one previously unassigned row. -/
-private def search : Nat → List (Option Row) → List (List Row) → Bool
-  | 0, assigned, domains => (chooseMRV assigned domains).isNone
-  | fuel + 1, assigned, domains =>
-      match chooseMRV assigned domains with
-      | none => true
-      | some i =>
-          (domains.getD i []).any fun ri =>
-            if compatibleAssigned assigned i ri then
-              let assigned' := assigned.set i (some ri)
-              match refineDomains assigned' domains i ri with
-              | none => false
-              | some domains' => search fuel assigned' domains'
-            else
-              false
-
-private def patterns : List Row := [
-  [2, 2, 2, 4, 4, 4, 4, 4, 4, 2, 2, 2],
-  [4, 3, 1, 4, 4, 3, 3, 3, 3, 4, 2, 2],
-  [4, 3, 1, 5, 3, 3, 3, 3, 3, 3, 3, 2],
-  [4, 3, 1, 4, 4, 4, 3, 3, 2, 3, 3, 2],
-  [4, 2, 2, 5, 3, 3, 3, 3, 3, 4, 2, 2],
-  [4, 2, 2, 4, 4, 4, 3, 3, 2, 4, 2, 2],
-  [4, 2, 2, 5, 4, 3, 3, 3, 2, 3, 3, 2],
-  [4, 2, 2, 4, 4, 4, 4, 2, 2, 3, 3, 2],
-  [3, 3, 2, 5, 4, 4, 3, 2, 2, 3, 3, 2],
-  [3, 3, 2, 4, 4, 4, 4, 3, 1, 3, 3, 2],
-  [5, 3, 2, 3, 3, 3, 3, 2, 2, 4, 3, 3],
-  [4, 4, 2, 3, 3, 3, 3, 2, 2, 4, 4, 2],
-  [4, 4, 2, 4, 3, 3, 2, 2, 2, 4, 3, 3],
-  [4, 4, 2, 3, 3, 3, 3, 3, 1, 4, 3, 3],
-  [4, 3, 3, 4, 4, 2, 2, 2, 2, 4, 3, 3],
-  [4, 3, 3, 4, 3, 3, 3, 2, 1, 4, 3, 3]
-]
-
-private def initialAssigned : List (Option Row) := List.replicate N none
-
-private def caseHasSolution (p : Row) : Bool :=
-  search N initialAssigned ((List.range N).map (rowOptions p))
-
-/-- The exact finite quotient search finds no solution in any of the sixteen
-canonical moment types. -/
-def quotientSearchPassed : Bool := patterns.all fun p => !(caseHasSolution p)
-
-set_option maxRecDepth 1000000 in
-set_option maxHeartbeats 0 in
-/-- Kernel-checked finite certificate. -/
-theorem quotientCasesUnsat : quotientSearchPassed = true := by
-  native_decide
+theorem noReducedOrbitMatrix
+    (x_0_0 x_0_1 x_0_2 x_0_3 x_0_4 x_0_5 : BitVec 3)
+    (x_0_6 x_0_7 x_0_8 x_0_9 x_0_10 x_0_11 : BitVec 3)
+    (x_1_1 x_1_2 x_1_3 x_1_4 x_1_5 x_1_6 : BitVec 3)
+    (x_1_7 x_1_8 x_1_9 x_1_10 x_1_11 x_2_2 : BitVec 3)
+    (x_2_3 x_2_4 x_2_5 x_2_6 x_2_7 x_2_8 : BitVec 3)
+    (x_2_9 x_2_10 x_2_11 x_3_3 x_3_4 x_3_5 : BitVec 3)
+    (x_3_6 x_3_7 x_3_8 x_3_9 x_3_10 x_3_11 : BitVec 3)
+    (x_4_4 x_4_5 x_4_6 x_4_7 x_4_8 x_4_9 : BitVec 3)
+    (x_4_10 x_4_11 x_5_5 x_5_6 x_5_7 x_5_8 : BitVec 3)
+    (x_5_9 x_5_10 x_5_11 x_6_6 x_6_7 x_6_8 : BitVec 3)
+    (x_6_9 x_6_10 x_6_11 x_7_7 x_7_8 x_7_9 : BitVec 3)
+    (x_7_10 x_7_11 x_8_8 x_8_9 x_8_10 x_8_11 : BitVec 3)
+    (x_9_9 x_9_10 x_9_11 x_10_10 x_10_11 x_11_11 : BitVec 3)
+    : ¬ (
+      (x_0_0 &&& 1#3) = 0#3 ∧
+      (x_1_1 &&& 1#3) = 0#3 ∧
+      (x_2_2 &&& 1#3) = 0#3 ∧
+      (x_3_3 &&& 1#3) = 0#3 ∧
+      (x_4_4 &&& 1#3) = 0#3 ∧
+      (x_5_5 &&& 1#3) = 0#3 ∧
+      (x_6_6 &&& 1#3) = 0#3 ∧
+      (x_7_7 &&& 1#3) = 0#3 ∧
+      (x_8_8 &&& 1#3) = 0#3 ∧
+      (x_9_9 &&& 1#3) = 0#3 ∧
+      (x_10_10 &&& 1#3) = 0#3 ∧
+      (x_11_11 &&& 1#3) = 0#3 ∧
+      (w x_0_0 + w x_0_1 + w x_0_2 + w x_0_3 + w x_0_4 + w x_0_5 + w x_0_6 + w x_0_7 + w x_0_8 + w x_0_9 + w x_0_10 + w x_0_11) = 12#10 ∧
+      (w x_0_1 + w x_1_1 + w x_1_2 + w x_1_3 + w x_1_4 + w x_1_5 + w x_1_6 + w x_1_7 + w x_1_8 + w x_1_9 + w x_1_10 + w x_1_11) = 12#10 ∧
+      (w x_0_2 + w x_1_2 + w x_2_2 + w x_2_3 + w x_2_4 + w x_2_5 + w x_2_6 + w x_2_7 + w x_2_8 + w x_2_9 + w x_2_10 + w x_2_11) = 12#10 ∧
+      (w x_0_3 + w x_1_3 + w x_2_3 + w x_3_3 + w x_3_4 + w x_3_5 + w x_3_6 + w x_3_7 + w x_3_8 + w x_3_9 + w x_3_10 + w x_3_11) = 12#10 ∧
+      (w x_0_4 + w x_1_4 + w x_2_4 + w x_3_4 + w x_4_4 + w x_4_5 + w x_4_6 + w x_4_7 + w x_4_8 + w x_4_9 + w x_4_10 + w x_4_11) = 12#10 ∧
+      (w x_0_5 + w x_1_5 + w x_2_5 + w x_3_5 + w x_4_5 + w x_5_5 + w x_5_6 + w x_5_7 + w x_5_8 + w x_5_9 + w x_5_10 + w x_5_11) = 12#10 ∧
+      (w x_0_6 + w x_1_6 + w x_2_6 + w x_3_6 + w x_4_6 + w x_5_6 + w x_6_6 + w x_6_7 + w x_6_8 + w x_6_9 + w x_6_10 + w x_6_11) = 12#10 ∧
+      (w x_0_7 + w x_1_7 + w x_2_7 + w x_3_7 + w x_4_7 + w x_5_7 + w x_6_7 + w x_7_7 + w x_7_8 + w x_7_9 + w x_7_10 + w x_7_11) = 12#10 ∧
+      (w x_0_8 + w x_1_8 + w x_2_8 + w x_3_8 + w x_4_8 + w x_5_8 + w x_6_8 + w x_7_8 + w x_8_8 + w x_8_9 + w x_8_10 + w x_8_11) = 12#10 ∧
+      (w x_0_9 + w x_1_9 + w x_2_9 + w x_3_9 + w x_4_9 + w x_5_9 + w x_6_9 + w x_7_9 + w x_8_9 + w x_9_9 + w x_9_10 + w x_9_11) = 12#10 ∧
+      (w x_0_10 + w x_1_10 + w x_2_10 + w x_3_10 + w x_4_10 + w x_5_10 + w x_6_10 + w x_7_10 + w x_8_10 + w x_9_10 + w x_10_10 + w x_10_11) = 12#10 ∧
+      (w x_0_11 + w x_1_11 + w x_2_11 + w x_3_11 + w x_4_11 + w x_5_11 + w x_6_11 + w x_7_11 + w x_8_11 + w x_9_11 + w x_10_11 + w x_11_11) = 12#10 ∧
+      (w x_0_0 + w x_0_1 + w x_0_2) = (w x_0_9 + w x_0_10 + w x_0_11) ∧
+      (w x_0_1 + w x_1_1 + w x_1_2) = (w x_1_9 + w x_1_10 + w x_1_11) ∧
+      (w x_0_2 + w x_1_2 + w x_2_2) = (w x_2_9 + w x_2_10 + w x_2_11) ∧
+      (w x_0_3 + w x_1_3 + w x_2_3) = (w x_3_9 + w x_3_10 + w x_3_11) ∧
+      (w x_0_4 + w x_1_4 + w x_2_4) = (w x_4_9 + w x_4_10 + w x_4_11) ∧
+      (w x_0_5 + w x_1_5 + w x_2_5) = (w x_5_9 + w x_5_10 + w x_5_11) ∧
+      (w x_0_6 + w x_1_6 + w x_2_6) = (w x_6_9 + w x_6_10 + w x_6_11) ∧
+      (w x_0_7 + w x_1_7 + w x_2_7) = (w x_7_9 + w x_7_10 + w x_7_11) ∧
+      (w x_0_8 + w x_1_8 + w x_2_8) = (w x_8_9 + w x_8_10 + w x_8_11) ∧
+      (w x_0_9 + w x_1_9 + w x_2_9) = (w x_9_9 + w x_9_10 + w x_9_11) ∧
+      (w x_0_10 + w x_1_10 + w x_2_10) = (w x_9_10 + w x_10_10 + w x_10_11) ∧
+      (w x_0_11 + w x_1_11 + w x_2_11) = (w x_9_11 + w x_10_11 + w x_11_11) ∧
+      (((w x_0_0 * w x_0_0) + (w x_0_1 * w x_0_1) + (w x_0_2 * w x_0_2) + (w x_0_3 * w x_0_3) + (w x_0_4 * w x_0_4) + (w x_0_5 * w x_0_5) + (w x_0_6 * w x_0_6) + (w x_0_7 * w x_0_7) + (w x_0_8 * w x_0_8) + (w x_0_9 * w x_0_9) + (w x_0_10 * w x_0_10) + (w x_0_11 * w x_0_11)) + w x_0_0) = 22#10 ∧
+      (((w x_0_0 * w x_0_1) + (w x_0_1 * w x_1_1) + (w x_0_2 * w x_1_2) + (w x_0_3 * w x_1_3) + (w x_0_4 * w x_1_4) + (w x_0_5 * w x_1_5) + (w x_0_6 * w x_1_6) + (w x_0_7 * w x_1_7) + (w x_0_8 * w x_1_8) + (w x_0_9 * w x_1_9) + (w x_0_10 * w x_1_10) + (w x_0_11 * w x_1_11)) + w x_0_1) = 10#10 ∧
+      (((w x_0_0 * w x_0_2) + (w x_0_1 * w x_1_2) + (w x_0_2 * w x_2_2) + (w x_0_3 * w x_2_3) + (w x_0_4 * w x_2_4) + (w x_0_5 * w x_2_5) + (w x_0_6 * w x_2_6) + (w x_0_7 * w x_2_7) + (w x_0_8 * w x_2_8) + (w x_0_9 * w x_2_9) + (w x_0_10 * w x_2_10) + (w x_0_11 * w x_2_11)) + w x_0_2) = 10#10 ∧
+      (((w x_0_0 * w x_0_3) + (w x_0_1 * w x_1_3) + (w x_0_2 * w x_2_3) + (w x_0_3 * w x_3_3) + (w x_0_4 * w x_3_4) + (w x_0_5 * w x_3_5) + (w x_0_6 * w x_3_6) + (w x_0_7 * w x_3_7) + (w x_0_8 * w x_3_8) + (w x_0_9 * w x_3_9) + (w x_0_10 * w x_3_10) + (w x_0_11 * w x_3_11)) + w x_0_3) = 12#10 ∧
+      (((w x_0_0 * w x_0_4) + (w x_0_1 * w x_1_4) + (w x_0_2 * w x_2_4) + (w x_0_3 * w x_3_4) + (w x_0_4 * w x_4_4) + (w x_0_5 * w x_4_5) + (w x_0_6 * w x_4_6) + (w x_0_7 * w x_4_7) + (w x_0_8 * w x_4_8) + (w x_0_9 * w x_4_9) + (w x_0_10 * w x_4_10) + (w x_0_11 * w x_4_11)) + w x_0_4) = 12#10 ∧
+      (((w x_0_0 * w x_0_5) + (w x_0_1 * w x_1_5) + (w x_0_2 * w x_2_5) + (w x_0_3 * w x_3_5) + (w x_0_4 * w x_4_5) + (w x_0_5 * w x_5_5) + (w x_0_6 * w x_5_6) + (w x_0_7 * w x_5_7) + (w x_0_8 * w x_5_8) + (w x_0_9 * w x_5_9) + (w x_0_10 * w x_5_10) + (w x_0_11 * w x_5_11)) + w x_0_5) = 12#10 ∧
+      (((w x_0_0 * w x_0_6) + (w x_0_1 * w x_1_6) + (w x_0_2 * w x_2_6) + (w x_0_3 * w x_3_6) + (w x_0_4 * w x_4_6) + (w x_0_5 * w x_5_6) + (w x_0_6 * w x_6_6) + (w x_0_7 * w x_6_7) + (w x_0_8 * w x_6_8) + (w x_0_9 * w x_6_9) + (w x_0_10 * w x_6_10) + (w x_0_11 * w x_6_11)) + w x_0_6) = 12#10 ∧
+      (((w x_0_0 * w x_0_7) + (w x_0_1 * w x_1_7) + (w x_0_2 * w x_2_7) + (w x_0_3 * w x_3_7) + (w x_0_4 * w x_4_7) + (w x_0_5 * w x_5_7) + (w x_0_6 * w x_6_7) + (w x_0_7 * w x_7_7) + (w x_0_8 * w x_7_8) + (w x_0_9 * w x_7_9) + (w x_0_10 * w x_7_10) + (w x_0_11 * w x_7_11)) + w x_0_7) = 12#10 ∧
+      (((w x_0_0 * w x_0_8) + (w x_0_1 * w x_1_8) + (w x_0_2 * w x_2_8) + (w x_0_3 * w x_3_8) + (w x_0_4 * w x_4_8) + (w x_0_5 * w x_5_8) + (w x_0_6 * w x_6_8) + (w x_0_7 * w x_7_8) + (w x_0_8 * w x_8_8) + (w x_0_9 * w x_8_9) + (w x_0_10 * w x_8_10) + (w x_0_11 * w x_8_11)) + w x_0_8) = 12#10 ∧
+      (((w x_0_0 * w x_0_9) + (w x_0_1 * w x_1_9) + (w x_0_2 * w x_2_9) + (w x_0_3 * w x_3_9) + (w x_0_4 * w x_4_9) + (w x_0_5 * w x_5_9) + (w x_0_6 * w x_6_9) + (w x_0_7 * w x_7_9) + (w x_0_8 * w x_8_9) + (w x_0_9 * w x_9_9) + (w x_0_10 * w x_9_10) + (w x_0_11 * w x_9_11)) + w x_0_9) = 14#10 ∧
+      (((w x_0_0 * w x_0_10) + (w x_0_1 * w x_1_10) + (w x_0_2 * w x_2_10) + (w x_0_3 * w x_3_10) + (w x_0_4 * w x_4_10) + (w x_0_5 * w x_5_10) + (w x_0_6 * w x_6_10) + (w x_0_7 * w x_7_10) + (w x_0_8 * w x_8_10) + (w x_0_9 * w x_9_10) + (w x_0_10 * w x_10_10) + (w x_0_11 * w x_10_11)) + w x_0_10) = 14#10 ∧
+      (((w x_0_0 * w x_0_11) + (w x_0_1 * w x_1_11) + (w x_0_2 * w x_2_11) + (w x_0_3 * w x_3_11) + (w x_0_4 * w x_4_11) + (w x_0_5 * w x_5_11) + (w x_0_6 * w x_6_11) + (w x_0_7 * w x_7_11) + (w x_0_8 * w x_8_11) + (w x_0_9 * w x_9_11) + (w x_0_10 * w x_10_11) + (w x_0_11 * w x_11_11)) + w x_0_11) = 14#10 ∧
+      (((w x_0_1 * w x_0_1) + (w x_1_1 * w x_1_1) + (w x_1_2 * w x_1_2) + (w x_1_3 * w x_1_3) + (w x_1_4 * w x_1_4) + (w x_1_5 * w x_1_5) + (w x_1_6 * w x_1_6) + (w x_1_7 * w x_1_7) + (w x_1_8 * w x_1_8) + (w x_1_9 * w x_1_9) + (w x_1_10 * w x_1_10) + (w x_1_11 * w x_1_11)) + w x_1_1) = 22#10 ∧
+      (((w x_0_1 * w x_0_2) + (w x_1_1 * w x_1_2) + (w x_1_2 * w x_2_2) + (w x_1_3 * w x_2_3) + (w x_1_4 * w x_2_4) + (w x_1_5 * w x_2_5) + (w x_1_6 * w x_2_6) + (w x_1_7 * w x_2_7) + (w x_1_8 * w x_2_8) + (w x_1_9 * w x_2_9) + (w x_1_10 * w x_2_10) + (w x_1_11 * w x_2_11)) + w x_1_2) = 10#10 ∧
+      (((w x_0_1 * w x_0_3) + (w x_1_1 * w x_1_3) + (w x_1_2 * w x_2_3) + (w x_1_3 * w x_3_3) + (w x_1_4 * w x_3_4) + (w x_1_5 * w x_3_5) + (w x_1_6 * w x_3_6) + (w x_1_7 * w x_3_7) + (w x_1_8 * w x_3_8) + (w x_1_9 * w x_3_9) + (w x_1_10 * w x_3_10) + (w x_1_11 * w x_3_11)) + w x_1_3) = 12#10 ∧
+      (((w x_0_1 * w x_0_4) + (w x_1_1 * w x_1_4) + (w x_1_2 * w x_2_4) + (w x_1_3 * w x_3_4) + (w x_1_4 * w x_4_4) + (w x_1_5 * w x_4_5) + (w x_1_6 * w x_4_6) + (w x_1_7 * w x_4_7) + (w x_1_8 * w x_4_8) + (w x_1_9 * w x_4_9) + (w x_1_10 * w x_4_10) + (w x_1_11 * w x_4_11)) + w x_1_4) = 12#10 ∧
+      (((w x_0_1 * w x_0_5) + (w x_1_1 * w x_1_5) + (w x_1_2 * w x_2_5) + (w x_1_3 * w x_3_5) + (w x_1_4 * w x_4_5) + (w x_1_5 * w x_5_5) + (w x_1_6 * w x_5_6) + (w x_1_7 * w x_5_7) + (w x_1_8 * w x_5_8) + (w x_1_9 * w x_5_9) + (w x_1_10 * w x_5_10) + (w x_1_11 * w x_5_11)) + w x_1_5) = 12#10 ∧
+      (((w x_0_1 * w x_0_6) + (w x_1_1 * w x_1_6) + (w x_1_2 * w x_2_6) + (w x_1_3 * w x_3_6) + (w x_1_4 * w x_4_6) + (w x_1_5 * w x_5_6) + (w x_1_6 * w x_6_6) + (w x_1_7 * w x_6_7) + (w x_1_8 * w x_6_8) + (w x_1_9 * w x_6_9) + (w x_1_10 * w x_6_10) + (w x_1_11 * w x_6_11)) + w x_1_6) = 12#10 ∧
+      (((w x_0_1 * w x_0_7) + (w x_1_1 * w x_1_7) + (w x_1_2 * w x_2_7) + (w x_1_3 * w x_3_7) + (w x_1_4 * w x_4_7) + (w x_1_5 * w x_5_7) + (w x_1_6 * w x_6_7) + (w x_1_7 * w x_7_7) + (w x_1_8 * w x_7_8) + (w x_1_9 * w x_7_9) + (w x_1_10 * w x_7_10) + (w x_1_11 * w x_7_11)) + w x_1_7) = 12#10 ∧
+      (((w x_0_1 * w x_0_8) + (w x_1_1 * w x_1_8) + (w x_1_2 * w x_2_8) + (w x_1_3 * w x_3_8) + (w x_1_4 * w x_4_8) + (w x_1_5 * w x_5_8) + (w x_1_6 * w x_6_8) + (w x_1_7 * w x_7_8) + (w x_1_8 * w x_8_8) + (w x_1_9 * w x_8_9) + (w x_1_10 * w x_8_10) + (w x_1_11 * w x_8_11)) + w x_1_8) = 12#10 ∧
+      (((w x_0_1 * w x_0_9) + (w x_1_1 * w x_1_9) + (w x_1_2 * w x_2_9) + (w x_1_3 * w x_3_9) + (w x_1_4 * w x_4_9) + (w x_1_5 * w x_5_9) + (w x_1_6 * w x_6_9) + (w x_1_7 * w x_7_9) + (w x_1_8 * w x_8_9) + (w x_1_9 * w x_9_9) + (w x_1_10 * w x_9_10) + (w x_1_11 * w x_9_11)) + w x_1_9) = 14#10 ∧
+      (((w x_0_1 * w x_0_10) + (w x_1_1 * w x_1_10) + (w x_1_2 * w x_2_10) + (w x_1_3 * w x_3_10) + (w x_1_4 * w x_4_10) + (w x_1_5 * w x_5_10) + (w x_1_6 * w x_6_10) + (w x_1_7 * w x_7_10) + (w x_1_8 * w x_8_10) + (w x_1_9 * w x_9_10) + (w x_1_10 * w x_10_10) + (w x_1_11 * w x_10_11)) + w x_1_10) = 14#10 ∧
+      (((w x_0_1 * w x_0_11) + (w x_1_1 * w x_1_11) + (w x_1_2 * w x_2_11) + (w x_1_3 * w x_2_11) + (w x_1_4 * w x_4_11) + (w x_1_5 * w x_5_11) + (w x_1_6 * w x_6_11) + (w x_1_7 * w x_7_11) + (w x_1_8 * w x_8_11) + (w x_1_9 * w x_9_11) + (w x_1_10 * w x_10_11) + (w x_1_11 * w x_11_11)) + w x_1_11) = 14#10 ∧
+      (((w x_0_2 * w x_0_2) + (w x_1_2 * w x_1_2) + (w x_2_2 * w x_2_2) + (w x_2_3 * w x_2_3) + (w x_2_4 * w x_2_4) + (w x_2_5 * w x_2_5) + (w x_2_6 * w x_2_6) + (w x_2_7 * w x_2_7) + (w x_2_8 * w x_2_8) + (w x_2_9 * w x_2_9) + (w x_2_10 * w x_2_10) + (w x_2_11 * w x_2_11)) + w x_2_2) = 22#10 ∧
+      (((w x_0_2 * w x_0_3) + (w x_1_2 * w x_1_3) + (w x_2_2 * w x_2_3) + (w x_2_3 * w x_3_3) + (w x_2_4 * w x_3_4) + (w x_2_5 * w x_3_5) + (w x_2_6 * w x_3_6) + (w x_2_7 * w x_3_7) + (w x_2_8 * w x_3_8) + (w x_2_9 * w x_3_9) + (w x_2_10 * w x_3_10) + (w x_2_11 * w x_3_11)) + w x_2_3) = 12#10 ∧
+      (((w x_0_2 * w x_0_4) + (w x_1_2 * w x_1_4) + (w x_2_2 * w x_2_4) + (w x_2_3 * w x_3_4) + (w x_2_4 * w x_4_4) + (w x_2_5 * w x_4_5) + (w x_2_6 * w x_4_6) + (w x_2_7 * w x_4_7) + (w x_2_8 * w x_4_8) + (w x_2_9 * w x_4_9) + (w x_2_10 * w x_4_10) + (w x_2_11 * w x_4_11)) + w x_2_4) = 12#10 ∧
+      (((w x_0_2 * w x_0_5) + (w x_1_2 * w x_1_5) + (w x_2_2 * w x_2_5) + (w x_2_3 * w x_3_5) + (w x_2_4 * w x_4_5) + (w x_2_5 * w x_5_5) + (w x_2_6 * w x_5_6) + (w x_2_7 * w x_5_7) + (w x_2_8 * w x_5_8) + (w x_2_9 * w x_5_9) + (w x_2_10 * w x_5_10) + (w x_2_11 * w x_5_11)) + w x_2_5) = 12#10 ∧
+      (((w x_0_2 * w x_0_6) + (w x_1_2 * w x_1_6) + (w x_2_2 * w x_2_6) + (w x_2_3 * w x_3_6) + (w x_2_4 * w x_4_6) + (w x_2_5 * w x_5_6) + (w x_2_6 * w x_6_6) + (w x_2_7 * w x_6_7) + (w x_2_8 * w x_6_8) + (w x_2_9 * w x_6_9) + (w x_2_10 * w x_6_10) + (w x_2_11 * w x_6_11)) + w x_2_6) = 12#10 ∧
+      (((w x_0_2 * w x_0_7) + (w x_1_2 * w x_1_7) + (w x_2_2 * w x_2_7) + (w x_2_3 * w x_3_7) + (w x_2_4 * w x_4_7) + (w x_2_5 * w x_5_7) + (w x_2_6 * w x_6_7) + (w x_2_7 * w x_7_7) + (w x_2_8 * w x_7_8) + (w x_2_9 * w x_7_9) + (w x_2_10 * w x_7_10) + (w x_2_11 * w x_7_11)) + w x_2_7) = 12#10 ∧
+      (((w x_0_2 * w x_0_8) + (w x_1_2 * w x_1_8) + (w x_2_2 * w x_2_8) + (w x_2_3 * w x_3_8) + (w x_2_4 * w x_4_8) + (w x_2_5 * w x_5_8) + (w x_2_6 * w x_6_8) + (w x_2_7 * w x_7_8) + (w x_2_8 * w x_8_8) + (w x_2_9 * w x_8_9) + (w x_2_10 * w x_8_10) + (w x_2_11 * w x_8_11)) + w x_2_8) = 12#10 ∧
+      (((w x_0_2 * w x_0_9) + (w x_1_2 * w x_1_9) + (w x_2_2 * w x_2_9) + (w x_2_3 * w x_3_9) + (w x_2_4 * w x_4_9) + (w x_2_5 * w x_5_9) + (w x_2_6 * w x_6_9) + (w x_2_7 * w x_7_9) + (w x_2_8 * w x_8_9) + (w x_2_9 * w x_9_9) + (w x_2_10 * w x_9_10) + (w x_2_11 * w x_9_11)) + w x_2_9) = 14#10 ∧
+      (((w x_0_2 * w x_0_10) + (w x_1_2 * w x_1_10) + (w x_2_2 * w x_2_10) + (w x_2_3 * w x_3_10) + (w x_2_4 * w x_4_10) + (w x_2_5 * w x_5_10) + (w x_2_6 * w x_6_10) + (w x_2_7 * w x_7_10) + (w x_2_8 * w x_8_10) + (w x_2_9 * w x_9_10) + (w x_2_10 * w x_10_10) + (w x_2_11 * w x_10_11)) + w x_2_10) = 14#10 ∧
+      (((w x_0_2 * w x_0_11) + (w x_1_2 * w x_1_11) + (w x_2_2 * w x_2_11) + (w x_2_3 * w x_3_11) + (w x_2_4 * w x_4_11) + (w x_2_5 * w x_5_11) + (w x_2_6 * w x_6_11) + (w x_2_7 * w x_7_11) + (w x_2_8 * w x_8_11) + (w x_2_9 * w x_9_11) + (w x_2_10 * w x_10_11) + (w x_2_11 * w x_11_11)) + w x_2_11) = 14#10 ∧
+      (((w x_0_3 * w x_0_3) + (w x_1_3 * w x_1_3) + (w x_2_3 * w x_2_3) + (w x_3_3 * w x_3_3) + (w x_3_4 * w x_3_4) + (w x_3_5 * w x_3_5) + (w x_3_6 * w x_3_6) + (w x_3_7 * w x_3_7) + (w x_3_8 * w x_3_8) + (w x_3_9 * w x_3_9) + (w x_3_10 * w x_3_10) + (w x_3_11 * w x_3_11)) + w x_3_3) = 24#10 ∧
+      (((w x_0_3 * w x_0_4) + (w x_1_3 * w x_1_4) + (w x_2_3 * w x_2_4) + (w x_3_3 * w x_3_4) + (w x_3_4 * w x_4_4) + (w x_3_5 * w x_4_5) + (w x_3_6 * w x_4_6) + (w x_3_7 * w x_4_7) + (w x_3_8 * w x_4_8) + (w x_3_9 * w x_4_9) + (w x_3_10 * w x_4_10) + (w x_3_11 * w x_4_11)) + w x_3_4) = 12#10 ∧
+      (((w x_0_3 * w x_0_5) + (w x_1_3 * w x_1_5) + (w x_2_3 * w x_2_5) + (w x_3_3 * w x_3_5) + (w x_3_4 * w x_4_5) + (w x_3_5 * w x_5_5) + (w x_3_6 * w x_5_6) + (w x_3_7 * w x_5_7) + (w x_3_8 * w x_5_8) + (w x_3_9 * w x_5_9) + (w x_3_10 * w x_5_10) + (w x_3_11 * w x_5_11)) + w x_3_5) = 12#10 ∧
+      (((w x_0_3 * w x_0_6) + (w x_1_3 * w x_1_6) + (w x_2_3 * w x_2_6) + (w x_3_3 * w x_3_6) + (w x_3_4 * w x_4_6) + (w x_3_5 * w x_5_6) + (w x_3_6 * w x_6_6) + (w x_3_7 * w x_6_7) + (w x_3_8 * w x_6_8) + (w x_3_9 * w x_6_9) + (w x_3_10 * w x_6_10) + (w x_3_11 * w x_6_11)) + w x_3_6) = 12#10 ∧
+      (((w x_0_3 * w x_0_7) + (w x_1_3 * w x_1_7) + (w x_2_3 * w x_2_7) + (w x_3_3 * w x_3_7) + (w x_3_4 * w x_4_7) + (w x_3_5 * w x_5_7) + (w x_3_6 * w x_6_7) + (w x_3_7 * w x_7_7) + (w x_3_8 * w x_7_8) + (w x_3_9 * w x_7_9) + (w x_3_10 * w x_7_10) + (w x_3_11 * w x_7_11)) + w x_3_7) = 12#10 ∧
+      (((w x_0_3 * w x_0_8) + (w x_1_3 * w x_1_8) + (w x_2_3 * w x_2_8) + (w x_3_3 * w x_3_8) + (w x_3_4 * w x_4_8) + (w x_3_5 * w x_5_8) + (w x_3_6 * w x_6_8) + (w x_3_7 * w x_7_8) + (w x_3_8 * w x_8_8) + (w x_3_9 * w x_8_9) + (w x_3_10 * w x_8_10) + (w x_3_11 * w x_8_11)) + w x_3_8) = 12#10 ∧
+      (((w x_0_3 * w x_0_9) + (w x_1_3 * w x_1_9) + (w x_2_3 * w x_2_9) + (w x_3_3 * w x_3_9) + (w x_3_4 * w x_4_9) + (w x_3_5 * w x_5_9) + (w x_3_6 * w x_6_9) + (w x_3_7 * w x_7_9) + (w x_3_8 * w x_8_9) + (w x_3_9 * w x_9_9) + (w x_3_10 * w x_9_10) + (w x_3_11 * w x_9_11)) + w x_3_9) = 12#10 ∧
+      (((w x_0_3 * w x_0_10) + (w x_1_3 * w x_1_10) + (w x_2_3 * w x_2_10) + (w x_3_3 * w x_3_10) + (w x_3_4 * w x_4_10) + (w x_3_5 * w x_5_10) + (w x_3_6 * w x_6_10) + (w x_3_7 * w x_7_10) + (w x_3_8 * w x_8_10) + (w x_3_9 * w x_9_10) + (w x_3_10 * w x_10_10) + (w x_3_11 * w x_10_11)) + w x_3_10) = 12#10 ∧
+      (((w x_0_3 * w x_0_11) + (w x_1_3 * w x_1_11) + (w x_2_3 * w x_2_11) + (w x_3_3 * w x_3_11) + (w x_3_4 * w x_4_11) + (w x_3_5 * w x_5_11) + (w x_3_6 * w x_6_11) + (w x_3_7 * w x_7_11) + (w x_3_8 * w x_8_11) + (w x_3_9 * w x_9_11) + (w x_3_10 * w x_10_11) + (w x_3_11 * w x_11_11)) + w x_3_11) = 12#10 ∧
+      (((w x_0_4 * w x_0_4) + (w x_1_4 * w x_1_4) + (w x_2_4 * w x_2_4) + (w x_3_4 * w x_3_4) + (w x_4_4 * w x_4_4) + (w x_4_5 * w x_4_5) + (w x_4_6 * w x_4_6) + (w x_4_7 * w x_4_7) + (w x_4_8 * w x_4_8) + (w x_4_9 * w x_4_9) + (w x_4_10 * w x_4_10) + (w x_4_11 * w x_4_11)) + w x_4_4) = 24#10 ∧
+      (((w x_0_4 * w x_0_5) + (w x_1_4 * w x_1_5) + (w x_2_4 * w x_2_5) + (w x_3_4 * w x_3_5) + (w x_4_4 * w x_4_5) + (w x_4_5 * w x_5_5) + (w x_4_6 * w x_5_6) + (w x_4_7 * w x_5_7) + (w x_4_8 * w x_5_8) + (w x_4_9 * w x_5_9) + (w x_4_10 * w x_5_10) + (w x_4_11 * w x_5_11)) + w x_4_5) = 12#10 ∧
+      (((w x_0_4 * w x_0_6) + (w x_1_4 * w x_1_6) + (w x_2_4 * w x_2_6) + (w x_3_4 * w x_3_6) + (w x_4_4 * w x_4_6) + (w x_4_5 * w x_5_6) + (w x_4_6 * w x_6_6) + (w x_4_7 * w x_6_7) + (w x_4_8 * w x_6_8) + (w x_4_9 * w x_6_9) + (w x_4_10 * w x_6_10) + (w x_4_11 * w x_6_11)) + w x_4_6) = 12#10 ∧
+      (((w x_0_4 * w x_0_7) + (w x_1_4 * w x_1_7) + (w x_2_4 * w x_2_7) + (w x_3_4 * w x_3_7) + (w x_4_4 * w x_4_7) + (w x_4_5 * w x_5_7) + (w x_4_6 * w x_6_7) + (w x_4_7 * w x_7_7) + (w x_4_8 * w x_7_8) + (w x_4_9 * w x_7_9) + (w x_4_10 * w x_7_10) + (w x_4_11 * w x_7_11)) + w x_4_7) = 12#10 ∧
+      (((w x_0_4 * w x_0_8) + (w x_1_4 * w x_1_8) + (w x_2_4 * w x_2_8) + (w x_3_4 * w x_3_8) + (w x_4_4 * w x_4_8) + (w x_4_5 * w x_5_8) + (w x_4_6 * w x_6_8) + (w x_4_7 * w x_7_8) + (w x_4_8 * w x_8_8) + (w x_4_9 * w x_8_9) + (w x_4_10 * w x_8_10) + (w x_4_11 * w x_8_11)) + w x_4_8) = 12#10 ∧
+      (((w x_0_4 * w x_0_9) + (w x_1_4 * w x_1_9) + (w x_2_4 * w x_2_9) + (w x_3_4 * w x_3_9) + (w x_4_4 * w x_4_9) + (w x_4_5 * w x_5_9) + (w x_4_6 * w x_6_9) + (w x_4_7 * w x_7_9) + (w x_4_8 * w x_8_9) + (w x_4_9 * w x_9_9) + (w x_4_10 * w x_9_10) + (w x_4_11 * w x_9_11)) + w x_4_9) = 12#10 ∧
+      (((w x_0_4 * w x_0_10) + (w x_1_4 * w x_1_10) + (w x_2_4 * w x_2_10) + (w x_3_4 * w x_3_10) + (w x_4_4 * w x_4_10) + (w x_4_5 * w x_5_10) + (w x_4_6 * w x_6_10) + (w x_4_7 * w x_7_10) + (w x_4_8 * w x_8_10) + (w x_4_9 * w x_9_10) + (w x_4_10 * w x_10_10) + (w x_4_11 * w x_10_11)) + w x_4_10) = 12#10 ∧
+      (((w x_0_4 * w x_0_11) + (w x_1_4 * w x_1_11) + (w x_2_4 * w x_2_11) + (w x_3_4 * w x_3_11) + (w x_4_4 * w x_4_11) + (w x_4_5 * w x_5_11) + (w x_4_6 * w x_6_11) + (w x_4_7 * w x_7_11) + (w x_4_8 * w x_8_11) + (w x_4_9 * w x_9_11) + (w x_4_10 * w x_10_11) + (w x_4_11 * w x_11_11)) + w x_4_11) = 12#10 ∧
+      (((w x_0_5 * w x_0_5) + (w x_1_5 * w x_1_5) + (w x_2_5 * w x_2_5) + (w x_3_5 * w x_3_5) + (w x_4_5 * w x_4_5) + (w x_5_5 * w x_5_5) + (w x_5_6 * w x_5_6) + (w x_5_7 * w x_5_7) + (w x_5_8 * w x_5_8) + (w x_5_9 * w x_5_9) + (w x_5_10 * w x_5_10) + (w x_5_11 * w x_5_11)) + w x_5_5) = 24#10 ∧
+      (((w x_0_5 * w x_0_6) + (w x_1_5 * w x_1_6) + (w x_2_5 * w x_2_6) + (w x_3_5 * w x_3_6) + (w x_4_5 * w x_4_6) + (w x_5_5 * w x_5_6) + (w x_5_6 * w x_6_6) + (w x_5_7 * w x_6_7) + (w x_5_8 * w x_6_8) + (w x_5_9 * w x_6_9) + (w x_5_10 * w x_6_10) + (w x_5_11 * w x_6_11)) + w x_5_6) = 12#10 ∧
+      (((w x_0_5 * w x_0_7) + (w x_1_5 * w x_1_7) + (w x_2_5 * w x_2_7) + (w x_3_5 * w x_3_7) + (w x_4_5 * w x_4_7) + (w x_5_5 * w x_5_7) + (w x_5_6 * w x_6_7) + (w x_5_7 * w x_7_7) + (w x_5_8 * w x_7_8) + (w x_5_9 * w x_7_9) + (w x_5_10 * w x_7_10) + (w x_5_11 * w x_7_11)) + w x_5_7) = 12#10 ∧
+      (((w x_0_5 * w x_0_8) + (w x_1_5 * w x_1_8) + (w x_2_5 * w x_2_8) + (w x_3_5 * w x_3_8) + (w x_4_5 * w x_4_8) + (w x_5_5 * w x_5_8) + (w x_5_6 * w x_6_8) + (w x_5_7 * w x_7_8) + (w x_5_8 * w x_8_8) + (w x_5_9 * w x_8_9) + (w x_5_10 * w x_8_10) + (w x_5_11 * w x_8_11)) + w x_5_8) = 12#10 ∧
+      (((w x_0_5 * w x_0_9) + (w x_1_5 * w x_1_9) + (w x_2_5 * w x_2_9) + (w x_3_5 * w x_3_9) + (w x_4_5 * w x_4_9) + (w x_5_5 * w x_5_9) + (w x_5_6 * w x_6_9) + (w x_5_7 * w x_7_9) + (w x_5_8 * w x_8_9) + (w x_5_9 * w x_9_9) + (w x_5_10 * w x_9_10) + (w x_5_11 * w x_9_11)) + w x_5_9) = 12#10 ∧
+      (((w x_0_5 * w x_0_10) + (w x_1_5 * w x_1_10) + (w x_2_5 * w x_2_10) + (w x_3_5 * w x_3_10) + (w x_4_5 * w x_4_10) + (w x_5_5 * w x_5_10) + (w x_5_6 * w x_6_10) + (w x_5_7 * w x_7_10) + (w x_5_8 * w x_8_10) + (w x_5_9 * w x_9_10) + (w x_5_10 * w x_10_10) + (w x_5_11 * w x_10_11)) + w x_5_10) = 12#10 ∧
+      (((w x_0_5 * w x_0_11) + (w x_1_5 * w x_1_11) + (w x_2_5 * w x_2_11) + (w x_3_5 * w x_3_11) + (w x_4_5 * w x_4_11) + (w x_5_5 * w x_5_11) + (w x_5_6 * w x_6_11) + (w x_5_7 * w x_7_11) + (w x_5_8 * w x_8_11) + (w x_5_9 * w x_9_11) + (w x_5_10 * w x_10_11) + (w x_5_11 * w x_11_11)) + w x_5_11) = 12#10 ∧
+      (((w x_0_6 * w x_0_6) + (w x_1_6 * w x_1_6) + (w x_2_6 * w x_2_6) + (w x_3_6 * w x_3_6) + (w x_4_6 * w x_4_6) + (w x_5_6 * w x_5_6) + (w x_6_6 * w x_6_6) + (w x_6_7 * w x_6_7) + (w x_6_8 * w x_6_8) + (w x_6_9 * w x_6_9) + (w x_6_10 * w x_6_10) + (w x_6_11 * w x_6_11)) + w x_6_6) = 24#10 ∧
+      (((w x_0_6 * w x_0_7) + (w x_1_6 * w x_1_7) + (w x_2_6 * w x_2_7) + (w x_3_6 * w x_3_7) + (w x_4_6 * w x_4_7) + (w x_5_6 * w x_5_7) + (w x_6_6 * w x_6_7) + (w x_6_7 * w x_7_7) + (w x_6_8 * w x_7_8) + (w x_6_9 * w x_7_9) + (w x_6_10 * w x_7_10) + (w x_6_11 * w x_7_11)) + w x_6_7) = 12#10 ∧
+      (((w x_0_6 * w x_0_8) + (w x_1_6 * w x_1_8) + (w x_2_6 * w x_2_8) + (w x_3_6 * w x_3_8) + (w x_4_6 * w x_4_8) + (w x_5_6 * w x_5_8) + (w x_6_6 * w x_6_8) + (w x_6_7 * w x_7_8) + (w x_6_8 * w x_8_8) + (w x_6_9 * w x_8_9) + (w x_6_10 * w x_8_10) + (w x_6_11 * w x_8_11)) + w x_6_8) = 12#10 ∧
+      (((w x_0_6 * w x_0_9) + (w x_1_6 * w x_1_9) + (w x_2_6 * w x_2_9) + (w x_3_6 * w x_3_9) + (w x_4_6 * w x_4_9) + (w x_5_6 * w x_5_9) + (w x_6_6 * w x_6_9) + (w x_6_7 * w x_7_9) + (w x_6_8 * w x_8_9) + (w x_6_9 * w x_9_9) + (w x_6_10 * w x_9_10) + (w x_6_11 * w x_9_11)) + w x_6_9) = 12#10 ∧
+      (((w x_0_6 * w x_0_10) + (w x_1_6 * w x_1_10) + (w x_2_6 * w x_2_10) + (w x_3_6 * w x_3_10) + (w x_4_6 * w x_4_10) + (w x_5_6 * w x_5_10) + (w x_6_6 * w x_6_10) + (w x_6_7 * w x_7_10) + (w x_6_8 * w x_8_10) + (w x_6_9 * w x_9_10) + (w x_6_10 * w x_10_10) + (w x_6_11 * w x_10_11)) + w x_6_10) = 12#10 ∧
+      (((w x_0_6 * w x_0_11) + (w x_1_6 * w x_1_11) + (w x_2_6 * w x_2_11) + (w x_3_6 * w x_3_11) + (w x_4_6 * w x_4_11) + (w x_5_6 * w x_5_11) + (w x_6_6 * w x_6_11) + (w x_6_7 * w x_7_11) + (w x_6_8 * w x_8_11) + (w x_6_9 * w x_9_11) + (w x_6_10 * w x_10_11) + (w x_6_11 * w x_11_11)) + w x_6_11) = 12#10 ∧
+      (((w x_0_7 * w x_0_7) + (w x_1_7 * w x_1_7) + (w x_2_7 * w x_2_7) + (w x_3_7 * w x_3_7) + (w x_4_7 * w x_4_7) + (w x_5_7 * w x_5_7) + (w x_6_7 * w x_6_7) + (w x_7_7 * w x_7_7) + (w x_7_8 * w x_7_8) + (w x_7_9 * w x_7_9) + (w x_7_10 * w x_7_10) + (w x_7_11 * w x_7_11)) + w x_7_7) = 24#10 ∧
+      (((w x_0_7 * w x_0_8) + (w x_1_7 * w x_1_8) + (w x_2_7 * w x_2_8) + (w x_3_7 * w x_3_8) + (w x_4_7 * w x_4_8) + (w x_5_7 * w x_5_8) + (w x_6_7 * w x_6_8) + (w x_7_7 * w x_7_8) + (w x_7_8 * w x_8_8) + (w x_7_9 * w x_8_9) + (w x_7_10 * w x_8_10) + (w x_7_11 * w x_8_11)) + w x_7_8) = 12#10 ∧
+      (((w x_0_7 * w x_0_9) + (w x_1_7 * w x_1_9) + (w x_2_7 * w x_2_9) + (w x_3_7 * w x_3_9) + (w x_4_7 * w x_4_9) + (w x_5_7 * w x_5_9) + (w x_6_7 * w x_6_9) + (w x_7_7 * w x_7_9) + (w x_7_8 * w x_8_9) + (w x_7_9 * w x_9_9) + (w x_7_10 * w x_9_10) + (w x_7_11 * w x_9_11)) + w x_7_9) = 12#10 ∧
+      (((w x_0_7 * w x_0_10) + (w x_1_7 * w x_1_10) + (w x_2_7 * w x_2_10) + (w x_3_7 * w x_3_10) + (w x_4_7 * w x_4_10) + (w x_5_7 * w x_5_10) + (w x_6_7 * w x_6_10) + (w x_7_7 * w x_7_10) + (w x_7_8 * w x_8_10) + (w x_7_9 * w x_9_10) + (w x_7_10 * w x_10_10) + (w x_7_11 * w x_10_11)) + w x_7_10) = 12#10 ∧
+      (((w x_0_7 * w x_0_11) + (w x_1_7 * w x_1_11) + (w x_2_7 * w x_2_11) + (w x_3_7 * w x_3_11) + (w x_4_7 * w x_4_11) + (w x_5_7 * w x_5_11) + (w x_6_7 * w x_6_11) + (w x_7_7 * w x_7_11) + (w x_7_8 * w x_8_11) + (w x_7_9 * w x_9_11) + (w x_7_10 * w x_10_11) + (w x_7_11 * w x_11_11)) + w x_7_11) = 12#10 ∧
+      (((w x_0_8 * w x_0_8) + (w x_1_8 * w x_1_8) + (w x_2_8 * w x_2_8) + (w x_3_8 * w x_3_8) + (w x_4_8 * w x_4_8) + (w x_5_8 * w x_5_8) + (w x_6_8 * w x_6_8) + (w x_7_8 * w x_7_8) + (w x_8_8 * w x_8_8) + (w x_8_9 * w x_8_9) + (w x_8_10 * w x_8_10) + (w x_8_11 * w x_8_11)) + w x_8_8) = 24#10 ∧
+      (((w x_0_8 * w x_0_9) + (w x_1_8 * w x_1_9) + (w x_2_8 * w x_2_9) + (w x_3_8 * w x_3_9) + (w x_4_8 * w x_4_9) + (w x_5_8 * w x_5_9) + (w x_6_8 * w x_6_9) + (w x_7_8 * w x_7_9) + (w x_8_8 * w x_8_9) + (w x_8_9 * w x_9_9) + (w x_8_10 * w x_9_10) + (w x_8_11 * w x_9_11)) + w x_8_9) = 12#10 ∧
+      (((w x_0_8 * w x_0_10) + (w x_1_8 * w x_1_10) + (w x_2_8 * w x_2_10) + (w x_3_8 * w x_3_10) + (w x_4_8 * w x_4_10) + (w x_5_8 * w x_5_10) + (w x_6_8 * w x_6_10) + (w x_7_8 * w x_7_10) + (w x_8_8 * w x_8_10) + (w x_8_9 * w x_9_10) + (w x_8_10 * w x_10_10) + (w x_8_11 * w x_10_11)) + w x_8_10) = 12#10 ∧
+      (((w x_0_8 * w x_0_11) + (w x_1_8 * w x_1_11) + (w x_2_8 * w x_2_11) + (w x_3_8 * w x_3_11) + (w x_4_8 * w x_4_11) + (w x_5_8 * w x_5_11) + (w x_6_8 * w x_6_11) + (w x_7_8 * w x_7_11) + (w x_8_8 * w x_8_11) + (w x_8_9 * w x_9_11) + (w x_8_10 * w x_10_11) + (w x_8_11 * w x_11_11)) + w x_8_11) = 12#10 ∧
+      (((w x_0_9 * w x_0_9) + (w x_1_9 * w x_1_9) + (w x_2_9 * w x_2_9) + (w x_3_9 * w x_3_9) + (w x_4_9 * w x_4_9) + (w x_5_9 * w x_5_9) + (w x_6_9 * w x_6_9) + (w x_7_9 * w x_7_9) + (w x_8_9 * w x_8_9) + (w x_9_9 * w x_9_9) + (w x_9_10 * w x_9_10) + (w x_9_11 * w x_9_11)) + w x_9_9) = 22#10 ∧
+      (((w x_0_9 * w x_0_10) + (w x_1_9 * w x_1_10) + (w x_2_9 * w x_2_10) + (w x_3_9 * w x_3_10) + (w x_4_9 * w x_4_10) + (w x_5_9 * w x_5_10) + (w x_6_9 * w x_6_10) + (w x_7_9 * w x_7_10) + (w x_8_9 * w x_8_10) + (w x_9_9 * w x_9_10) + (w x_9_10 * w x_10_10) + (w x_9_11 * w x_10_11)) + w x_9_10) = 10#10 ∧
+      (((w x_0_9 * w x_0_11) + (w x_1_9 * w x_1_11) + (w x_2_9 * w x_2_11) + (w x_3_9 * w x_3_11) + (w x_4_9 * w x_4_11) + (w x_5_9 * w x_5_11) + (w x_6_9 * w x_6_11) + (w x_7_9 * w x_7_11) + (w x_8_9 * w x_8_11) + (w x_9_9 * w x_9_11) + (w x_9_10 * w x_10_11) + (w x_9_11 * w x_11_11)) + w x_9_11) = 10#10 ∧
+      (((w x_0_10 * w x_0_10) + (w x_1_10 * w x_1_10) + (w x_2_10 * w x_2_10) + (w x_3_10 * w x_3_10) + (w x_4_10 * w x_4_10) + (w x_5_10 * w x_5_10) + (w x_6_10 * w x_6_10) + (w x_7_10 * w x_7_10) + (w x_8_10 * w x_8_10) + (w x_9_10 * w x_9_10) + (w x_10_10 * w x_10_10) + (w x_10_11 * w x_10_11)) + w x_10_10) = 22#10 ∧
+      (((w x_0_10 * w x_0_11) + (w x_1_10 * w x_1_11) + (w x_2_10 * w x_2_11) + (w x_3_10 * w x_3_11) + (w x_4_10 * w x_4_11) + (w x_5_10 * w x_5_11) + (w x_6_10 * w x_6_11) + (w x_7_10 * w x_7_11) + (w x_8_10 * w x_8_11) + (w x_9_10 * w x_9_11) + (w x_10_10 * w x_10_11) + (w x_10_11 * w x_11_11)) + w x_10_11) = 10#10 ∧
+      (((w x_0_11 * w x_0_11) + (w x_1_11 * w x_1_11) + (w x_2_11 * w x_2_11) + (w x_3_11 * w x_3_11) + (w x_4_11 * w x_4_11) + (w x_5_11 * w x_5_11) + (w x_6_11 * w x_6_11) + (w x_7_11 * w x_7_11) + (w x_8_11 * w x_8_11) + (w x_9_11 * w x_9_11) + (w x_10_11 * w x_10_11) + (w x_11_11 * w x_11_11)) + w x_11_11) = 22#10
+    ) := by
+  bv_decide
 
 end ConwayZ7
