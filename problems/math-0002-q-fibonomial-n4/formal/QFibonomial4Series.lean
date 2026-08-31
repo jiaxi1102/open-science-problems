@@ -38,9 +38,10 @@ theorem g_denominator_recurrence (n : ℕ) (hn : 1 ≤ n) :
       · interval_cases n <;> norm_num [g, quad, shiftedG]
       · have hn12' : 12 ≤ n := by omega
         have ih6 := ih (n - 6) (by omega) (by omega)
-        simp [shiftedG, show 1 ≤ n - 6 by omega,
-          show 2 ≤ n - 6 by omega, show 4 ≤ n - 6 by omega,
-          show 5 ≤ n - 6 by omega, show 6 ≤ n - 6 by omega] at ih6
+        simp [shiftedG, Nat.sub_sub,
+          show 1 ≤ n - 6 by omega, show 2 ≤ n - 6 by omega,
+          show 4 ≤ n - 6 by omega, show 5 ≤ n - 6 by omega,
+          show 6 ≤ n - 6 by omega] at ih6
         have h0Nat : g n = g (n - 6) + n := by
           have hstep := g_add_six (n - 6)
           have hidx : n - 6 + 6 = n := by omega
