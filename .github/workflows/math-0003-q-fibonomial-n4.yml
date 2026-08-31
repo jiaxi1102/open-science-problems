@@ -1,0 +1,49 @@
+name: math-0003 q-Fibonomial n=4 Lean verification
+
+on:
+  push:
+    branches:
+      - proof/math-0003-q-fibonomial-n4
+    paths:
+      - problems/math-0003-q-fibonomial-n4/**
+      - .github/workflows/math-0003-q-fibonomial-n4.yml
+  pull_request:
+    paths:
+      - problems/math-0003-q-fibonomial-n4/**
+      - .github/workflows/math-0003-q-fibonomial-n4.yml
+  workflow_dispatch:
+
+concurrency:
+  group: math-0003-q-fibonomial-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject unfinished proof declarations
+        shell: bash
+        working-directory: problems/math-0003-q-fibonomial-n4/formal
+        run: |
+          if grep -nE '(^|[[:space:]])(sorry|admit)([[:space:];]|$)|^[[:space:]]*axiom[[:space:]]' *.lean; then
+            echo "Unfinished proof or added axiom declaration found"
+            exit 1
+          fi
+      - name: Build, audit axioms, and check compiled environment
+        uses: leanprover/lean-action@v1
+        env:
+          LEAN_NUM_THREADS: "1"
+        with:
+          lake-package-directory: problems/math-0003-q-fibonomial-n4/formal
+          build: true
+          test: false
+          lint: false
+          leanchecker: true
+          leanchecker-args: "QFibonomial4 QFibonomial4All QFibonomial4Series QFibonomial4PowerSeries QFibonomial4Unimodal QFibonomial4Rational"
+          axiom-audit: true
+          axiom-audit-root: QFibonomial4
+          axiom-audit-allow: "propext,Classical.choice,Quot.sound"

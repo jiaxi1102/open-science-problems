@@ -6,6 +6,7 @@ This is the canonical index of investigations in this repository. Status labels 
 |---|---|---|---|---|---|---|---|
 | `math-0001` | Hedgehog unimodality | Ibarra–Landry–Montoya-Vega–Przytycki, Conj. 4.1 | algebraic combinatorics / knot theory | `proposed-proof` | stronger coefficient theorem verified in Lean 4 | prior-art search negative so far; priority not author-confirmed | formalize Proposition 2.5 bridge + independent expert review |
 | `math-0002` | Fractional \(5/2\)-cover of \(KG(8,2)\) | Gujgiczer–Marits–Ozeki, arXiv:2607.12353v1 open question | graph theory / fractional coloring | `proposed-proof` | matching-family classification and finite coloring obstruction verified in Lean 4; outer bridge human | source states open in July 2026; later-literature search and author confirmation pending | independent graph-theory audit + end-to-end formalization + novelty confirmation |
+| `math-0003` | q-Fibonomial unimodality for \(n=4\) | Connelly–Ito–Martinez–Shevchenko–Yang, arXiv:2605.12822 | algebraic combinatorics | `proposed-proof` | first-difference theorem, rational-series identity, finite cases, and symmetry-to-unimodality implication verified in Lean 4; published algebraic symmetry bridge external | targeted search found no prior \(n=4\) proof; priority not author-confirmed | independent combinatorics audit + formalize exact factorial-definition/symmetry bridge + author confirmation |
 
 ## Required status dimensions
 
