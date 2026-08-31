@@ -1,0 +1,55 @@
+name: math-0002 Kneser cover Lean verification
+
+on:
+  push:
+    paths:
+      - problems/math-0002-kneser-fractional-cover/formal/**
+      - .github/workflows/math-0002-kneser-cover.yml
+  pull_request:
+    paths:
+      - problems/math-0002-kneser-fractional-cover/formal/**
+      - .github/workflows/math-0002-kneser-cover.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate the explicit finite certificate
+        shell: bash
+        working-directory: problems/math-0002-kneser-fractional-cover/formal
+        run: |
+          python generate_lean.py
+          python finalize_lean.py
+          echo "143b3fdcb75423e419eb10d1ce7c8f9fbc700f22a0cd4d55d65e27950c0667e9  KneserCover.lean" | sha256sum -c -
+
+      - name: Reject unfinished or hand-written axiomatic shortcuts
+        shell: bash
+        working-directory: problems/math-0002-kneser-fractional-cover/formal
+        run: |
+          if grep -nE '\b(sorry|admit)\b' KneserCover.lean; then
+            echo "Unfinished proof marker found"
+            exit 1
+          fi
+          if grep -nE '^[[:space:]]*axiom[[:space:]]' KneserCover.lean; then
+            echo "Hand-written axiom found"
+            exit 1
+          fi
+
+      - name: Build Lean verification
+        uses: leanprover/lean-action@v1
+        env:
+          LEAN_NUM_THREADS: "1"
+        with:
+          lake-package-directory: problems/math-0002-kneser-fractional-cover/formal
+          build: true
+          test: false
+          lint: false
+          leanchecker: false
+          axiom-audit: false

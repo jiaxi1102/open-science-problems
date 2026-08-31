@@ -9,6 +9,7 @@ The repository is deliberately conservative about claims. A computational result
 | ID | Problem | Field | Status | Formal verification | External validation |
 |---|---|---|---|---|---|
 | `math-0001` | Hedgehog plucking-polynomial unimodality (Conjecture 4.1) | algebraic combinatorics / knot theory | `proposed-proof` | Lean 4 proof of stronger coefficient theorem | pending |
+| `math-0002` | Fractional \(5/2\)-cover number of \(KG(8,2)\) | graph theory / fractional coloring | `proposed-proof` | Lean 4 verification of the finite obstruction and matching-family classification | pending |
 
 See [`PROBLEMS.md`](PROBLEMS.md) for the registry and [`CONTRIBUTING.md`](CONTRIBUTING.md) for the required structure and claim standards.
 
@@ -16,9 +17,9 @@ See [`PROBLEMS.md`](PROBLEMS.md) for the registry and [`CONTRIBUTING.md`](CONTRI
 
 ```text
 problems/
-  math-0001-hedgehog-unimodality/
+  math-NNNN-short-name/
     README.md          # problem statement, provenance, status, scope
-    proof/             # human-readable proof and derivations
+    proof/ or proof.md # human-readable proof and derivations
     formal/            # Lean/Coq/Isabelle/etc. certificate
     experiments/       # search, computation, simulation, counterexamples
     references/        # bibliographic/novelty notes and source metadata
@@ -51,6 +52,12 @@ templates/
 6. Prefer small independently checkable certificates over opaque computation.
 7. Never label a result "solved" solely because CI is green.
 
-## Current flagship result
+## Current candidate resolutions
 
-`math-0001` contains a proposed proof of hedgehog plucking-polynomial unimodality for delays in `{1,2}`. The formal component proves a stronger zero-one coefficient theorem in Lean; the bridge to the original plucking-polynomial conjecture currently relies on the published factorization (Proposition 2.5) and is documented as such.
+### `math-0001`: hedgehog unimodality
+
+A proposed proof of hedgehog plucking-polynomial unimodality for delays in `{1,2}`. The formal component proves a stronger zero-one coefficient theorem in Lean; the bridge to the original plucking-polynomial conjecture currently relies on the published factorization (Proposition 2.5) and is documented as such.
+
+### `math-0002`: fractional Kneser cover
+
+A proposed proof that the fractional \(5/2\)-cover number of \(KG(8,2)\) is exactly three, negatively answering an open two-cover question from arXiv:2607.12353v1. Lean verifies the exhaustive finite obstruction and the matching-family classification; the fractional-coloring, Tutte–Berge, symmetry, and explicit upper-bound bridge remains a written human argument pending independent review.
