@@ -5,6 +5,8 @@ open scoped BigOperators
 
 namespace QRiousCounterexample
 
+noncomputable section
+
 /-- The q-integer `[n]_q = 1 + q + ... + q^(n-1)`. -/
 def qNat (n : ℕ) : Polynomial ℤ :=
   (Finset.range n).sum fun i => X ^ i
@@ -58,14 +60,15 @@ def CoeffUnimodal (p : Polynomial ℤ) : Prop :=
 theorem qFactorial_quotient_certificate :
     qFactorial 9 * qFactorial 6 * qFactorial 4 * (qFactorial 1) ^ 3 * candidateD =
       qFactorial 12 * qFactorial 5 * qFactorial 3 * qFactorial 2 := by
-  native_decide
+  norm_num [qFactorial, qNat, candidateD, Finset.sum_range_succ]
+  ring
 
 /-- The three coefficients witnessing the central valley. -/
 theorem central_coefficients :
     candidateQ.coeff 10 = 16 ∧
     candidateQ.coeff 12 = 14 ∧
     candidateQ.coeff 14 = 16 := by
-  native_decide
+  norm_num [candidateQ, candidateD]
 
 /-- The polynomial `(1+q)D(q)` is not unimodal. -/
 theorem candidateQ_not_unimodal : ¬ CoeffUnimodal candidateQ := by
@@ -125,15 +128,15 @@ lemma floor_mul_four (x : ℝ) : ⌊4 * x⌋ = ⌊180 * x⌋ / 45 := by
     ⌊4 * x⌋ = ⌊(180 * x) / 45⌋ := by congr 1 <;> ring
     _ = ⌊180 * x⌋ / 45 := by simpa using (Int.floor_div_natCast (180 * x) 45)
 
-lemma floor_one (x : ℝ) : ⌊x⌋ = ⌊180 * x⌋ / 180 := by
+lemma floor_mul_one (x : ℝ) : ⌊x⌋ = ⌊180 * x⌋ / 180 := by
   calc
     ⌊x⌋ = ⌊(180 * x) / 180⌋ := by congr 1 <;> ring
     _ = ⌊180 * x⌋ / 180 := by simpa using (Int.floor_div_natCast (180 * x) 180)
 
 lemma landauStep_eq_reduced (x : ℝ) : landauStep x = reducedLandau ⌊180 * x⌋ := by
-  simp only [landauStep, reducedLandau, floor_mul_twelve, floor_mul_five,
-    floor_mul_three, floor_mul_two, floor_mul_nine, floor_mul_six,
-    floor_mul_four, floor_one]
+  unfold landauStep reducedLandau
+  rw [floor_mul_twelve x, floor_mul_five x, floor_mul_three x, floor_mul_two x,
+    floor_mul_nine x, floor_mul_six x, floor_mul_four x, floor_mul_one x]
 
 lemma reducedLandau_periodic (k : ℤ) :
     reducedLandau k = reducedLandau (k % 180) := by
@@ -142,7 +145,7 @@ lemma reducedLandau_periodic (k : ℤ) :
 
 lemma reducedLandau_on_residues :
     ∀ r : Fin 180, 0 ≤ reducedLandau (r : ℕ) := by
-  native_decide
+  decide
 
 /-- The candidate satisfies Landau's criterion for every real input. -/
 theorem landauCriterion : ∀ x : ℝ, 0 ≤ landauStep x := by
@@ -154,7 +157,8 @@ theorem landauCriterion : ∀ x : ℝ, 0 ≤ landauStep x := by
   have h := reducedLandau_on_residues r
   have hcast : ((r : ℕ) : ℤ) = ⌊180 * x⌋ % 180 := by
     simp [r, Int.toNat_of_nonneg hr0]
-  simpa [hcast] using h
+  rw [← hcast]
+  exact h
 
 /-- The exact counterexample package: valid Landau pair, exact quotient, non-unimodality. -/
 theorem q_rious_unimodality_counterexample :
@@ -165,5 +169,7 @@ theorem q_rious_unimodality_counterexample :
   exact ⟨landauCriterion, qFactorial_quotient_certificate, candidateQ_not_unimodal⟩
 
 #print axioms q_rious_unimodality_counterexample
+
+end
 
 end QRiousCounterexample
