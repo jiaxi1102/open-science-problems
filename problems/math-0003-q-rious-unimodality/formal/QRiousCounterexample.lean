@@ -68,7 +68,8 @@ theorem central_coefficients :
     candidateQ.coeff 10 = 16 ∧
     candidateQ.coeff 12 = 14 ∧
     candidateQ.coeff 14 = 16 := by
-  norm_num [candidateQ, candidateD]
+  norm_num [candidateQ, candidateD, Polynomial.coeff_mul,
+    Finset.Nat.sum_antidiagonal_eq_sum_range_succ]
 
 /-- The polynomial `(1+q)D(q)` is not unimodal. -/
 theorem candidateQ_not_unimodal : ¬ CoeffUnimodal candidateQ := by
@@ -145,7 +146,8 @@ lemma reducedLandau_periodic (k : ℤ) :
 
 lemma reducedLandau_on_residues :
     ∀ r : Fin 180, 0 ≤ reducedLandau (r : ℕ) := by
-  decide
+  set_option maxRecDepth 100000 in
+    decide
 
 /-- The candidate satisfies Landau's criterion for every real input. -/
 theorem landauCriterion : ∀ x : ℝ, 0 ≤ landauStep x := by
