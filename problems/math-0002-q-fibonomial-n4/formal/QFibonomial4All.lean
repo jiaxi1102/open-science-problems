@@ -22,7 +22,8 @@ theorem fibonacci_delta_nonnegative_small
     interval_cases m <;> norm_num [Nat.fib] at hk ⊢ <;> omega
   interval_cases m
   all_goals interval_cases k
-  all_goals norm_num [Nat.fib, delta, shiftedG, g, quad] at hk ⊢
+  all_goals norm_num [Nat.fib] at hk
+  all_goals norm_num [Nat.fib, delta, shiftedG, g, quad]
 
 /--
 For every Fibonacci index, all reduced first differences through the center
