@@ -1,0 +1,45 @@
+name: math-0001 hedgehog Lean verification
+
+on:
+  push:
+    paths:
+      - problems/math-0001-hedgehog-unimodality/formal/**
+      - .github/workflows/math-0001-hedgehog.yml
+  pull_request:
+    paths:
+      - problems/math-0001-hedgehog-unimodality/formal/**
+      - .github/workflows/math-0001-hedgehog.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reject unfinished proof markers
+        shell: bash
+        working-directory: problems/math-0001-hedgehog-unimodality/formal
+        run: |
+          if grep -nE '\b(sorry|admit)\b' Hedgehog.lean; then
+            echo "Unfinished proof marker found"
+            exit 1
+          fi
+
+      - name: Build, audit axioms, and check compiled environment
+        uses: leanprover/lean-action@v1
+        env:
+          LEAN_NUM_THREADS: "1"
+        with:
+          lake-package-directory: problems/math-0001-hedgehog-unimodality/formal
+          build: true
+          test: false
+          lint: false
+          leanchecker: true
+          leanchecker-args: "Hedgehog"
+          axiom-audit: true
+          axiom-audit-root: Hedgehog
+          axiom-audit-allow: "propext,Classical.choice,Quot.sound"
