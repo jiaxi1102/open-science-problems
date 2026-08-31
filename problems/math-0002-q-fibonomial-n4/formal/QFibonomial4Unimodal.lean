@@ -6,7 +6,8 @@ import QFibonomial4All
 This file isolates the final order-theoretic step.  A coefficient sequence
 that is symmetric in degree `D` and nondecreasing through the midpoint is
 unimodal.  It then specializes that fact to any sequence satisfying the
-q-Fibonomial first-difference law proved in the other modules.
+q-Fibonomial first-difference law on precisely the first-half range where the
+four-term reduction applies.
 -/
 
 namespace QFibonomial4
@@ -62,13 +63,13 @@ def qFib4Degree (m : ℕ) : ℕ :=
 
 /--
 Any symmetric coefficient sequence satisfying the derived q-Fibonomial
-first-difference formula is unimodal.  The published symmetry theorem supplies
-`hsym` for the actual q-Fibonomial coefficients.
+first-difference formula through the midpoint is unimodal.  The published
+symmetry theorem supplies `hsym` for the actual q-Fibonomial coefficients.
 -/
 theorem qFib4_unimodal_of_symmetry_and_difference
     (m : ℕ) (c : ℕ → ℤ)
     (hsym : SymmetricAtDegree c (qFib4Degree m))
-    (hdiff : ∀ k, 1 ≤ k →
+    (hdiff : ∀ k, 1 ≤ k → 2 * k ≤ qFib4Degree m →
       c k - c (k - 1) =
         delta (Nat.fib (m + 1)) (Nat.fib (m + 2)) k) :
     UnimodalAtDegree c (qFib4Degree m) := by
@@ -80,7 +81,7 @@ theorem qFib4_unimodal_of_symmetry_and_difference
     unfold qFib4Degree at hk
     omega
   have hnonneg := fibonacci_delta_nonnegative m (k + 1) hkDelta
-  have hd := hdiff (k + 1) (by omega)
+  have hd := hdiff (k + 1) (by omega) hk
   have hsub : k + 1 - 1 = k := by omega
   rw [hsub] at hd
   omega
