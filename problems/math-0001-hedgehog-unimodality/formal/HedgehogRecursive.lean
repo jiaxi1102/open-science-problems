@@ -5,7 +5,7 @@ import HedgehogStar
 
 `HedgehogStar` formalizes the first pluck of a `{1,2}`-delayed star after
 identifying the remaining trivial-delay star with its q-factorial coefficient
-sequence.  This file removes that last identification as an assumption: it
+sequence. This file removes that last identification as an assumption: it
 proves that the q-factorial sequence satisfies the ordinary star-plucking
 recursion, defines the recursion independently, and proves the two semantics
 coincide.
@@ -15,7 +15,7 @@ namespace Hedgehog
 
 /-- A moving window is the finite sum of all monomial shifts in its range. -/
 theorem window_eq_sum_range (r : ℕ) (a : ℤ → ℤ) (k : ℤ) :
-    Window r a k = ∑ i in Finset.range r, a (k - (i : ℤ)) := by
+    Window r a k = ∑ i ∈ Finset.range r, a (k - (i : ℤ)) := by
   induction r with
   | zero => simp [Window]
   | succ r ih =>
@@ -85,7 +85,7 @@ theorem recursivePlainStar_eq_plain (n : ℕ) :
       exact (plainStar_first_pluck n).symm
 
 /-- Independent recursive semantics for a star whose initial delays lie in
-`{1,2}`.  A true Boolean denotes an initially eligible delay-one leaf.  After
+`{1,2}`. A true Boolean denotes an initially eligible delay-one leaf. After
 an eligible first pluck, the remaining ordinary star is evaluated by its own
 recursive semantics above. -/
 def RecursiveDelayedStarCoeffs : ℕ → (ℕ → Bool) → ℤ → ℤ
