@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Reject unfinished proof markers
         run: |
-          if grep -nE '\b(sorry|admit|axiom)\b' QFibonomial4.lean; then
+          if grep -nE '\b(sorry|admit|axiom)\b' QFibonomial4.lean QFibonomial4All.lean; then
             echo "Unfinished or added axiom marker found"
             exit 1
           fi
@@ -39,6 +39,8 @@ jobs:
       - name: Download mathlib cache
         run: lake exe cache get
       - name: Elaborate and kernel-check
-        run: lake env lean QFibonomial4.lean
+        run: |
+          lake env lean QFibonomial4.lean
+          lake env lean QFibonomial4All.lean
       - name: Build target
         run: lake build
