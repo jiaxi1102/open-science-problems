@@ -8,4 +8,9 @@ require mathlib from git
 
 @[default_target]
 lean_lib QFibonomial4 where
-  roots := #[`QFibonomial4, `QFibonomial4All, `QFibonomial4Series]
+  roots := #[
+    `QFibonomial4,
+    `QFibonomial4All,
+    `QFibonomial4Series,
+    `QFibonomial4Unimodal
+  ]
