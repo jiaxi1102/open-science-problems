@@ -25,12 +25,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Reject unfinished proof markers
+      - name: Reject unfinished proof declarations
         shell: bash
         working-directory: problems/math-0002-q-fibonomial-n4/formal
         run: |
-          if grep -nE '\b(sorry|admit|axiom)\b' *.lean; then
-            echo "Unfinished or added axiom marker found"
+          if grep -nE '(^|[[:space:]])(sorry|admit)([[:space:];]|$)|^[[:space:]]*axiom[[:space:]]' *.lean; then
+            echo "Unfinished proof or added axiom declaration found"
             exit 1
           fi
       - name: Build, audit axioms, and check compiled environment
