@@ -1,0 +1,44 @@
+name: math-0002 q-Fibonomial n=4 Lean verification
+
+on:
+  push:
+    branches:
+      - proof/math-0002-q-fibonomial-n4
+    paths:
+      - problems/math-0002-q-fibonomial-n4/**
+      - .github/workflows/math-0002-q-fibonomial-n4.yml
+  pull_request:
+    paths:
+      - problems/math-0002-q-fibonomial-n4/**
+      - .github/workflows/math-0002-q-fibonomial-n4.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: problems/math-0002-q-fibonomial-n4/formal
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject unfinished proof markers
+        run: |
+          if grep -nE '\b(sorry|admit|axiom)\b' QFibonomial4.lean; then
+            echo "Unfinished or added axiom marker found"
+            exit 1
+          fi
+      - name: Install elan
+        run: |
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Resolve dependencies
+        run: lake update
+      - name: Download mathlib cache
+        run: lake exe cache get
+      - name: Elaborate and kernel-check
+        run: lake env lean QFibonomial4.lean
+      - name: Build target
+        run: lake build
