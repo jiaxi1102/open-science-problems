@@ -4,16 +4,20 @@ import Std.Tactic.BVDecide
 # Conway's 99-graph: direct bit-vector obstruction to an order-seven quotient
 
 This file checks the exact 12 × 12 integral system forced by an
-order-seven automorphism with one fixed vertex.  The matrix is represented
+order-seven automorphism with one fixed vertex. The matrix is represented
 by its 78 upper-triangular entries, each a 3-bit unsigned integer (0..7).
-All arithmetic identities are evaluated in 10 bits; the proven bounds make
-overflow impossible (the largest quadratic sum is at most 588).
+All arithmetic identities are evaluated in 10 bits; overflow is impossible:
+the largest quadratic sum is at most 12*7^2+7 = 595 < 2^10.
+
+Generated deterministically by `generate_lean.py`.
 -/
 
 namespace ConwayZ7
 
 private abbrev w (x : BitVec 3) : BitVec 10 := BitVec.zeroExtend 10 x
 
+set_option maxRecDepth 1000000 in
+set_option maxHeartbeats 0 in
 theorem noReducedOrbitMatrix
     (x_0_0 x_0_1 x_0_2 x_0_3 x_0_4 x_0_5 : BitVec 3)
     (x_0_6 x_0_7 x_0_8 x_0_9 x_0_10 x_0_11 : BitVec 3)
@@ -87,7 +91,7 @@ theorem noReducedOrbitMatrix
       (((w x_0_1 * w x_0_8) + (w x_1_1 * w x_1_8) + (w x_1_2 * w x_2_8) + (w x_1_3 * w x_3_8) + (w x_1_4 * w x_4_8) + (w x_1_5 * w x_5_8) + (w x_1_6 * w x_6_8) + (w x_1_7 * w x_7_8) + (w x_1_8 * w x_8_8) + (w x_1_9 * w x_8_9) + (w x_1_10 * w x_8_10) + (w x_1_11 * w x_8_11)) + w x_1_8) = 12#10 ∧
       (((w x_0_1 * w x_0_9) + (w x_1_1 * w x_1_9) + (w x_1_2 * w x_2_9) + (w x_1_3 * w x_3_9) + (w x_1_4 * w x_4_9) + (w x_1_5 * w x_5_9) + (w x_1_6 * w x_6_9) + (w x_1_7 * w x_7_9) + (w x_1_8 * w x_8_9) + (w x_1_9 * w x_9_9) + (w x_1_10 * w x_9_10) + (w x_1_11 * w x_9_11)) + w x_1_9) = 14#10 ∧
       (((w x_0_1 * w x_0_10) + (w x_1_1 * w x_1_10) + (w x_1_2 * w x_2_10) + (w x_1_3 * w x_3_10) + (w x_1_4 * w x_4_10) + (w x_1_5 * w x_5_10) + (w x_1_6 * w x_6_10) + (w x_1_7 * w x_7_10) + (w x_1_8 * w x_8_10) + (w x_1_9 * w x_9_10) + (w x_1_10 * w x_10_10) + (w x_1_11 * w x_10_11)) + w x_1_10) = 14#10 ∧
-      (((w x_0_1 * w x_0_11) + (w x_1_1 * w x_1_11) + (w x_1_2 * w x_2_11) + (w x_1_3 * w x_2_11) + (w x_1_4 * w x_4_11) + (w x_1_5 * w x_5_11) + (w x_1_6 * w x_6_11) + (w x_1_7 * w x_7_11) + (w x_1_8 * w x_8_11) + (w x_1_9 * w x_9_11) + (w x_1_10 * w x_10_11) + (w x_1_11 * w x_11_11)) + w x_1_11) = 14#10 ∧
+      (((w x_0_1 * w x_0_11) + (w x_1_1 * w x_1_11) + (w x_1_2 * w x_2_11) + (w x_1_3 * w x_3_11) + (w x_1_4 * w x_4_11) + (w x_1_5 * w x_5_11) + (w x_1_6 * w x_6_11) + (w x_1_7 * w x_7_11) + (w x_1_8 * w x_8_11) + (w x_1_9 * w x_9_11) + (w x_1_10 * w x_10_11) + (w x_1_11 * w x_11_11)) + w x_1_11) = 14#10 ∧
       (((w x_0_2 * w x_0_2) + (w x_1_2 * w x_1_2) + (w x_2_2 * w x_2_2) + (w x_2_3 * w x_2_3) + (w x_2_4 * w x_2_4) + (w x_2_5 * w x_2_5) + (w x_2_6 * w x_2_6) + (w x_2_7 * w x_2_7) + (w x_2_8 * w x_2_8) + (w x_2_9 * w x_2_9) + (w x_2_10 * w x_2_10) + (w x_2_11 * w x_2_11)) + w x_2_2) = 22#10 ∧
       (((w x_0_2 * w x_0_3) + (w x_1_2 * w x_1_3) + (w x_2_2 * w x_2_3) + (w x_2_3 * w x_3_3) + (w x_2_4 * w x_3_4) + (w x_2_5 * w x_3_5) + (w x_2_6 * w x_3_6) + (w x_2_7 * w x_3_7) + (w x_2_8 * w x_3_8) + (w x_2_9 * w x_3_9) + (w x_2_10 * w x_3_10) + (w x_2_11 * w x_3_11)) + w x_2_3) = 12#10 ∧
       (((w x_0_2 * w x_0_4) + (w x_1_2 * w x_1_4) + (w x_2_2 * w x_2_4) + (w x_2_3 * w x_3_4) + (w x_2_4 * w x_4_4) + (w x_2_5 * w x_4_5) + (w x_2_6 * w x_4_6) + (w x_2_7 * w x_4_7) + (w x_2_8 * w x_4_8) + (w x_2_9 * w x_4_9) + (w x_2_10 * w x_4_10) + (w x_2_11 * w x_4_11)) + w x_2_4) = 12#10 ∧
