@@ -1,0 +1,75 @@
+name: Kneser local-star structural classification
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - tools/kneser_local_star_structure.py
+      - .github/workflows/kneser-local-star-structure.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  classify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        solver: [cadical195, glucose4]
+        experiment:
+          - avoid-d1
+          - avoid-d2
+          - avoid-d3
+          - both-d2
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pinned SAT package
+        run: pip install 'python-sat==1.8.dev17'
+
+      - name: Test local-star structural statement
+        shell: bash
+        run: |
+          case '${{ matrix.experiment }}' in
+            avoid-d1)
+              mode=avoid-both-covers
+              cover=1
+              ;;
+            avoid-d2)
+              mode=avoid-both-covers
+              cover=2
+              ;;
+            avoid-d3)
+              mode=avoid-both-covers
+              cover=3
+              ;;
+            both-d2)
+              mode=both-covered
+              cover=2
+              ;;
+            *)
+              echo "unknown experiment" >&2
+              exit 2
+              ;;
+          esac
+
+          mkdir -p experiments/kneser_ramsey/results/local-star
+          python tools/kneser_local_star_structure.py \
+            --mode "$mode" \
+            --cover-size "$cover" \
+            --solver '${{ matrix.solver }}' \
+            --out "experiments/kneser_ramsey/results/local-star/${{ matrix.experiment }}-${{ matrix.solver }}.json"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: local-star-${{ matrix.experiment }}-${{ matrix.solver }}
+          path: experiments/kneser_ramsey/results/local-star/${{ matrix.experiment }}-${{ matrix.solver }}.json
+          if-no-files-found: error
