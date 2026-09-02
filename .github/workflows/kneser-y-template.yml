@@ -1,3 +1,4 @@
+# Exact scan of lifted templates depending only on weight and the Y-trace.
 name: Kneser weight-and-Y template scan
 
 on:
