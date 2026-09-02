@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Exact SAT encoding for monochromatic-triangle-free colorings of KG(12,3).
+"""Exact SAT encoding for triangle-free two-colorings of ``KG(12,3)``.
 
-Variables encode colors of Kneser edges. For every Kneser triangle, the two
-3-literal clauses enforce not-all-equal. A canonical triangle is fixed to the
-pattern 0,0,1 using ground-set and global-color symmetry.
+One Boolean variable is assigned to every Kneser edge.  Every Kneser triangle
+contributes the two clauses that forbid its three edge colors from being all
+zero or all one.
 
-Usage:
-  python search_kneser_r3_exact.py generate output.cnf [metadata.json]
-  python search_kneser_r3_exact.py verify solver-output.txt [metadata.json]
+The base encoding fixes one canonical Kneser triangle to ``0,0,1``.  Optional
+``--k4-case`` values split all solutions into the two possible color-isomorphism
+types on the unique fourth triple completing that triangle to a Kneser K4.
+All DIMACS identifiers are obtained by symbolic lookup and asserted against a
+known manifest; no hand-copied variable numbers are used.
 """
 from __future__ import annotations
 
@@ -20,6 +22,12 @@ from typing import Iterable
 
 N = 12
 R = 3
+BLOCKS = (
+    (0, 1, 2),
+    (3, 4, 5),
+    (6, 7, 8),
+    (9, 10, 11),
+)
 
 
 def build_instance():
@@ -32,7 +40,7 @@ def build_instance():
         sa = set(a)
         for j in range(i + 1, len(vertices)):
             if sa.isdisjoint(vertices[j]):
-                edge_id[(i, j)] = len(edges) + 1  # DIMACS variables are 1-based.
+                edge_id[(i, j)] = len(edges) + 1
                 edges.append((i, j))
 
     triangles: list[tuple[int, int, int]] = []
@@ -54,47 +62,84 @@ def build_instance():
                     edge_id[(j, k)],
                 ))
 
+    block_ids = [vertex_id[block] for block in BLOCKS]
+
+    def block_edge(i: int, j: int) -> int:
+        x, y = sorted((block_ids[i], block_ids[j]))
+        return edge_id[(x, y)]
+
+    k4 = {
+        "AB": block_edge(0, 1),
+        "AC": block_edge(0, 2),
+        "BC": block_edge(1, 2),
+        "AD": block_edge(0, 3),
+        "BD": block_edge(1, 3),
+        "CD": block_edge(2, 3),
+    }
+    expected = {
+        "AB": 1,
+        "AC": 65,
+        "BC": 8401,
+        "AD": 84,
+        "BD": 8420,
+        "CD": 9231,
+    }
+
     assert len(vertices) == 220
     assert len(edges) == 9240
     assert len(triangles) == 61600
     assert len(set(triangles)) == len(triangles)
-
-    # Every satisfying coloring can be carried by a permutation of [12] and,
-    # if needed, global color complementation to this canonical pattern.
-    a = vertex_id[(0, 1, 2)]
-    b = vertex_id[(3, 4, 5)]
-    c = vertex_id[(6, 7, 8)]
-    canonical = (
-        edge_id[tuple(sorted((a, b)))],
-        edge_id[tuple(sorted((a, c)))],
-        edge_id[tuple(sorted((b, c)))],
-    )
-    return vertices, edges, triangles, canonical
+    assert k4 == expected, (k4, expected)
+    return vertices, edges, triangles, k4
 
 
-def clauses_for(triangles, canonical) -> Iterable[tuple[int, ...]]:
+def branch_units(k4: dict[str, int], case: str) -> list[int]:
+    if case == "none":
+        return []
+
+    # The base units are AB=0, AC=0, BC=1.  The three triangles involving D
+    # imply AD=1 and not(BD=1 and CD=1).  Swapping B and C preserves the base
+    # pattern, so every solution has an isomorphic representative with BD=0.
+    # CD then distinguishes the only two K4 color-isomorphism types.
+    common = [k4["AD"], -k4["BD"]]
+    if case == "cycle-matching":
+        return common + [-k4["CD"]]
+    if case == "path-path":
+        return common + [k4["CD"]]
+    raise ValueError(f"unknown K4 case: {case}")
+
+
+def clauses_for(
+    triangles: Iterable[tuple[int, int, int]],
+    k4: dict[str, int],
+    case: str,
+) -> Iterable[tuple[int, ...]]:
     for a, b, c in triangles:
         yield (a, b, c)
         yield (-a, -b, -c)
-    # Fixed canonical NAE pattern: 0, 0, 1.
-    yield (-canonical[0],)
-    yield (-canonical[1],)
-    yield (canonical[2],)
+
+    # A canonical nonmonochromatic triangle, without loss of generality under
+    # S_12 and global color complementation.
+    yield (-k4["AB"],)
+    yield (-k4["AC"],)
+    yield (k4["BC"],)
+
+    for literal in branch_units(k4, case):
+        yield (literal,)
 
 
-def generate(cnf_path: Path, metadata_path: Path | None) -> None:
-    vertices, edges, triangles, canonical = build_instance()
-    num_vars = len(edges)
-    num_clauses = 2 * len(triangles) + 3
+def generate(cnf_path: Path, metadata_path: Path | None, case: str) -> None:
+    vertices, edges, triangles, k4 = build_instance()
+    clauses = list(clauses_for(triangles, k4, case))
 
     digest = hashlib.sha256()
-    with cnf_path.open("w", encoding="ascii", newline="\n") as f:
-        header = f"p cnf {num_vars} {num_clauses}\n"
-        f.write(header)
+    with cnf_path.open("w", encoding="ascii", newline="\n") as handle:
+        header = f"p cnf {len(edges)} {len(clauses)}\n"
+        handle.write(header)
         digest.update(header.encode("ascii"))
-        for clause in clauses_for(triangles, canonical):
+        for clause in clauses:
             line = " ".join(map(str, clause)) + " 0\n"
-            f.write(line)
+            handle.write(line)
             digest.update(line.encode("ascii"))
 
     metadata = {
@@ -107,10 +152,13 @@ def generate(cnf_path: Path, metadata_path: Path | None) -> None:
         "vertices": len(vertices),
         "edges": len(edges),
         "triangles": len(triangles),
-        "variables": num_vars,
-        "clauses": num_clauses,
-        "canonical_triangle_variables": canonical,
-        "canonical_pattern": [0, 0, 1],
+        "variables": len(edges),
+        "clauses": len(clauses),
+        "canonical_blocks": BLOCKS,
+        "canonical_k4_variables": k4,
+        "canonical_triangle_pattern": {"AB": 0, "AC": 0, "BC": 1},
+        "k4_case": case,
+        "branch_unit_literals": branch_units(k4, case),
         "cnf_sha256": digest.hexdigest(),
         "edge_order": (
             "lexicographic vertex IDs; vertices are lexicographic 3-subsets "
@@ -134,42 +182,44 @@ def parse_model(text: str) -> tuple[str, dict[int, bool]]:
                 status = "SAT"
         elif line.startswith("v "):
             for token in line[2:].split():
-                lit = int(token)
-                if lit == 0:
-                    continue
-                assignment[abs(lit)] = lit > 0
+                literal = int(token)
+                if literal:
+                    assignment[abs(literal)] = literal > 0
     return status, assignment
 
 
 def verify(output_path: Path, metadata_path: Path | None) -> None:
-    _, edges, triangles, canonical = build_instance()
+    _, edges, triangles, k4 = build_instance()
+    metadata = json.loads(metadata_path.read_text()) if metadata_path else {}
     status, assignment = parse_model(output_path.read_text(errors="replace"))
     if status == "UNSAT":
         print(json.dumps({
             "status": "UNSAT",
             "warning": (
-                "Solver status only; an independently checked proof certificate "
-                "is still required."
+                "Solver status only; an independently checked proof trace is "
+                "required before this is mathematical evidence."
             ),
         }, indent=2))
         return
     if status != "SAT":
         raise SystemExit("solver output has no SAT/UNSAT status")
-    if len(assignment) < len(edges):
-        missing = [i for i in range(1, len(edges) + 1) if i not in assignment]
+    missing = [i for i in range(1, len(edges) + 1) if i not in assignment]
+    if missing:
         raise SystemExit(f"incomplete model: {len(missing)} variables missing")
 
-    assert not assignment[canonical[0]]
-    assert not assignment[canonical[1]]
-    assert assignment[canonical[2]]
+    assert not assignment[k4["AB"]]
+    assert not assignment[k4["AC"]]
+    assert assignment[k4["BC"]]
+    for literal in metadata.get("branch_unit_literals", []):
+        assert assignment[abs(literal)] == (literal > 0)
 
     mono = []
     one_true = 0
     two_true = 0
-    for tri in triangles:
-        colors = tuple(assignment[x] for x in tri)
+    for triangle in triangles:
+        colors = tuple(assignment[x] for x in triangle)
         if colors[0] == colors[1] == colors[2]:
-            mono.append(tri)
+            mono.append(triangle)
         elif sum(colors) == 1:
             one_true += 1
         else:
@@ -178,17 +228,15 @@ def verify(output_path: Path, metadata_path: Path | None) -> None:
         raise SystemExit(f"invalid model: {len(mono)} monochromatic triangles")
 
     bits = "".join("1" if assignment[i] else "0" for i in range(1, len(edges) + 1))
-    result = {
+    print(json.dumps({
         "status": "SAT",
         "variables_assigned": len(assignment),
         "monochromatic_triangles": 0,
         "triangles_with_one_true_edge": one_true,
         "triangles_with_two_true_edges": two_true,
         "model_bits_sha256": hashlib.sha256(bits.encode("ascii")).hexdigest(),
-    }
-    if metadata_path and metadata_path.exists():
-        result["metadata"] = json.loads(metadata_path.read_text())
-    print(json.dumps(result, indent=2, sort_keys=True))
+        "metadata": metadata,
+    }, indent=2, sort_keys=True))
 
 
 def main() -> None:
@@ -197,12 +245,17 @@ def main() -> None:
     p_gen = sub.add_parser("generate")
     p_gen.add_argument("cnf", type=Path)
     p_gen.add_argument("metadata", type=Path, nargs="?")
+    p_gen.add_argument(
+        "--k4-case",
+        choices=("none", "cycle-matching", "path-path"),
+        default="none",
+    )
     p_ver = sub.add_parser("verify")
     p_ver.add_argument("solver_output", type=Path)
     p_ver.add_argument("metadata", type=Path, nargs="?")
     args = parser.parse_args()
     if args.cmd == "generate":
-        generate(args.cnf, args.metadata)
+        generate(args.cnf, args.metadata, args.k4_case)
     else:
         verify(args.solver_output, args.metadata)
 
