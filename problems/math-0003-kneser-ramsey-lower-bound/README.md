@@ -69,6 +69,40 @@ The theorem does **not** prove the matching upper bound. Establishing
 `R_r^{KG}(3,3)<=3r+3` for all `r` remains the central route to an exact
 family theorem.
 
+## Rigidity of the construction
+
+A second theorem candidate explains why the construction stops exactly where
+it does. For every `r >= 3`, the explicit five-point coloring `c_r` of
+`KG(3r+2,r)` is **one-point saturated**:
+
+> no good coloring of `KG(3r+3,r)` can restrict to `c_r` on the original
+> `3r+2` ground points.
+
+The proof produces two periodic signed forcing cycles through the same old
+Kneser vertex. One rules out coloring a selected new edge red; the other
+rules out coloring it blue. Anonymous filler points are supplied by the
+integer decomposition theorem for the stable-set polytope of an odd cycle.
+
+At `r=3`, the entire one-point extension decomposes into 55 independently
+checkable monotone 2-SAT instances. Exactly 10 individual new vertices can be
+added, while the other 45 are obstructed. Symmetry reduces the 45 failures to
+two explicit signed odd bicycles consisting of only four short alternating
+paths.
+
+See:
+
+- [`proof/r3-one-point-saturation.md`](proof/r3-one-point-saturation.md) for
+  the complete finite theorem and human certificates;
+- [`proof/uniform-one-point-saturation.md`](proof/uniform-one-point-saturation.md)
+  for the periodic all-r construction;
+- [`references/ONE_POINT_SATURATION.md`](references/ONE_POINT_SATURATION.md)
+  for the imported odd-cycle theorem and novelty boundary.
+
+This rigidity result still does not prove the matching upper bound: a good
+coloring at `3r+3`, if one exists, could reorganize the old edge colors rather
+than extend `c_r`. Its value is structural—it identifies a uniform local
+mechanism that any stability or uniqueness proof must confront.
+
 ## Construction in one paragraph
 
 Fix five ground points identified with `Z/5Z`. For an `r`-set `A`, let
@@ -89,7 +123,8 @@ three induced edge colors cannot be equal.
 
 ## Argument / evidence
 
-The complete proof is in [`proof/five-point-construction.md`](proof/five-point-construction.md).
+The complete lower-bound proof is in
+[`proof/five-point-construction.md`](proof/five-point-construction.md).
 
 The deterministic verifier
 
@@ -101,6 +136,20 @@ checks all `918` possible labeled trace partitions and independently rebuilds
 and verifies every Kneser triangle for `r=1,2,3,4`. It uses only the Python
 standard library.
 
+The rigidity checks are:
+
+```bash
+python tools/verify_kneser_r3_one_point_saturation.py
+python tools/verify_kneser_general_saturation_templates.py
+```
+
+The first reconstructs all 55 finite extension instances, validates every
+positive assignment, and checks the short negative certificates. The second
+checks both periodic trace blocks, every alternating edge color, and the
+weighted odd-cycle inequalities through `r=1000` as a regression sweep. The
+universal proof is the displayed algebra plus the cited integer-decomposition
+theorem, not an inference from the finite sweep.
+
 ## Formalization boundary
 
 The Lean component verifies the finite five-point gadget: every three
@@ -108,15 +157,24 @@ pairwise-disjoint five-bit traces whose union has at least three points induce
 both colors. The outer lift to `KG(3r+2,r)` currently uses the written
 cardinality argument that three disjoint `r`-sets leave two points unused.
 
-The intended next formal gate is an end-to-end Lean theorem for arbitrary
-`r`, including the trace-cardinality bridge.
+The one-point-saturation proof is presently human-checked plus independently
+executable verification. Its weighted odd-cycle filler lemma and periodic
+trace recurrences have not yet been encoded in Lean.
+
+The intended next formal gates are:
+
+1. an end-to-end Lean theorem for the arbitrary-`r` lower-bound lift;
+2. a Lean proof of the weighted odd-cycle filler lemma;
+3. a formal composition of the two periodic forcing cycles into the
+   one-point-saturation theorem.
 
 ## Novelty / prior art
 
 A targeted search through September 2, 2026 found the posted Kneser-Ramsey
 paper with the weaker bound `3r+2`, but did not find this five-point trace
-construction or the displayed `3r+3` theorem. See
-[`references/NOVELTY.md`](references/NOVELTY.md).
+construction, the displayed `3r+3` theorem, or the one-point rigidity
+statement. See [`references/NOVELTY.md`](references/NOVELTY.md) and
+[`references/ONE_POINT_SATURATION.md`](references/ONE_POINT_SATURATION.md).
 
 This is not yet an exhaustive priority determination. The authors of the
 original paper and independent extremal-combinatorics experts should be asked
@@ -124,19 +182,25 @@ to check both novelty and correctness before public priority claims.
 
 ## Risks and unresolved items
 
-1. The result has not yet been peer reviewed or independently reproduced.
-2. The current Lean boundary checks the finite gadget, not yet the complete
-   arbitrary-`r` lift.
-3. The matching general upper bound remains open.
-4. The broader fractional-host bridge on the experimental branch remains a
+1. Neither theorem has yet been peer reviewed or independently reproduced.
+2. The current Lean boundary checks the finite lower-bound gadget, not the
+   complete arbitrary-`r` lift or the rigidity theorem.
+3. The one-point theorem imports the integer decomposition property for odd
+   cycle stable-set polytopes; that application needs independent audit.
+4. The matching general upper bound remains open.
+5. The broader fractional-host bridge on the experimental branch remains a
    separate theorem candidate with its own novelty burden.
 
 ## Next gates
 
-1. Complete and CI-check the Lean finite gadget.
-2. Formalize the arbitrary-`r` lifting argument end to end.
-3. Obtain independent review from the Kneser-Ramsey paper's authors.
-4. Attack the upper bound `R_r^{KG}(3,3)<=3r+3`, using the five-point gadget
-   as a guide to the extremal structure.
-5. Determine whether analogous finite trace gadgets sharpen lower bounds for
-   `R_r^{KG}(s,t)` beyond the triangle case.
+1. Formalize the arbitrary-`r` lower-bound lift end to end.
+2. Obtain independent review from the Kneser-Ramsey paper's authors.
+3. Formalize the weighted odd-cycle filler lemma and both periodic forcing
+   cycles.
+4. Attack `R_r^{KG}(3,3)<=3r+3` through stability: show that every extremal
+   coloring at `3r+2` is equivalent or close enough to the five-point family
+   to inherit a signed-cycle obstruction.
+5. Decide the exact `r=3` one-apex subproblem with a checkable SAT/UNSAT
+   certificate; this is strictly smaller than the full `KG(12,3)` instance.
+6. Determine whether analogous finite trace gadgets and saturation mechanisms
+   sharpen other Kneser-Ramsey parameters.
