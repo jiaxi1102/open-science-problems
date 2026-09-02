@@ -51,7 +51,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          timeout --signal=TERM 70m "$KISSAT" --witness=true \
+          timeout --signal=TERM 70m "$KISSAT" \
             artifacts/kg-12-3.cnf \
             > artifacts/solver-output.txt \
             2> artifacts/solver-stderr.txt
