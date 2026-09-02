@@ -1,0 +1,35 @@
+name: Kneser permutation-symmetry scan
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - tools/kneser_symmetry_scan.py
+      - .github/workflows/kneser-permutation-symmetry.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install SAT solver
+        run: pip install 'python-sat==1.8.dev17'
+      - name: Scan all nonidentity cycle types on KG(11,3)
+        run: |
+          python tools/kneser_symmetry_scan.py \
+            --n 11 --k 3 \
+            --out experiments/kneser_ramsey/results/kg_11_3_permutation_symmetry.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kg-11-3-permutation-symmetry
+          path: experiments/kneser_ramsey/results/kg_11_3_permutation_symmetry.json
+          if-no-files-found: warn
