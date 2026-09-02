@@ -1,0 +1,299 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage[hidelinks]{hyperref}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\Q}{Q}
+\newcommand{\iotaR}{\iota_r}
+\newcommand{\CAN}{\operatorname{CAN}}
+\newcommand{\Kcov}{K}
+\newcommand{\Vol}{V}
+
+\title{Subcube isolation in hypercubes is radius-covering:\\
+a coding-theoretic dictionary, perfect-code obstruction, and a phase transition}
+\author{Working draft}
+\date{September 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Bre\v{s}ar and Rall asked whether the minimum number of vertices whose closed
+neighborhoods destroy every copy of $Q_k$ in $Q_n$ always equals
+$\gamma(Q_{n-k})$.  We identify the invariant exactly with a binary
+radius-covering-array number.  This corrects the provenance of the smallest
+counterexample, whose numerical value is established covering-array prior art,
+and yields structural consequences not visible in the graph formulation.  We
+prove a sharp fixed-codimension transition: the parameter is constant in
+codimensions at most three and grows logarithmically from codimension four
+onward.  We also derive a perfect-code projection obstruction.  For every
+binary Hamming length $m=2^t-1$, $t\ge 3$, it implies
+$\iota(Q_{m+k},Q_k)=\gamma(Q_m)$ exactly when $k=1$, giving infinitely many
+strict inequalities while the surviving forbidden cube is fixed at $Q_2$.
+The coordinate-copy theorem, the graph-to-array bridge, and the arithmetic core
+are accompanied by Lean verification; the full packing obstruction remains an
+explicit formalization target.
+\end{abstract}
+
+\section{Introduction}
+
+Let $Q_n$ be the graph on $\{0,1\}^n$ with edges joining words at Hamming
+distance one.  For graphs $G$ and $H$, the $H$-isolation number $\iota(G,H)$
+is the minimum cardinality of a set $D\subseteq V(G)$ such that
+$G-N[D]$ contains no copy of $H$.  Bre\v{s}ar and Rall asked whether
+\begin{equation}\label{eq:BR}
+  \iota(Q_n,Q_k)=\gamma(Q_{n-k})
+\end{equation}
+for every $0<k<n$.
+
+The key observation is that the projected domination condition occurring in
+this problem is not a new finite object: it is precisely a radius-covering
+array.  The translation makes the proposed equality
+\[
+  \CAN_1(m,n,2)=\Kcov_2(m,1), \qquad m=n-k,
+\]
+where $\Kcov_q(m,r)$ is the minimum size of a $q$-ary radius-$r$ covering code.
+
+\section{Coordinate copies of hypercubes}
+
+\begin{lemma}[Coordinate-copy lemma]\label{lem:coordinate-copy}
+Every subgraph of $Q_n$ isomorphic to $Q_k$ is a coordinate $k$-subcube.
+Equivalently, after translating one vertex, its embedding is obtained by
+injecting the $k$ intrinsic coordinate directions into $k$ distinct ambient
+coordinates.
+\end{lemma}
+
+\begin{proof}
+Color every ambient edge by the unique coordinate that it flips.  Every
+four-cycle in a hypercube alternates between two distinct colors, so opposite
+edges have the same color.  In $Q_k$, all edges in one intrinsic direction are
+connected through a sequence of opposite-edge relations in four-cycles;
+therefore they have one common ambient color.  Edges in distinct intrinsic
+directions meet at a vertex and hence receive distinct colors.  Starting from
+one image vertex, every domain word is therefore mapped by independently
+flipping the corresponding fixed ambient coordinates.
+\end{proof}
+
+\section{The radius-covering dictionary}
+
+For $q\ge2$, an $N\times n$ $q$-ary array has radius-covering strength $m$ and
+radius $r$ if every choice of $m$ columns has covering radius at most $r$ in
+$[q]^m$.  Write $\CAN_r(m,n,q)$ for the least possible number of rows.
+
+Define $\iota_r(Q_n,Q_k)$ to be the minimum size of $D\subseteq Q_n$ such that
+$Q_n-N_r[D]$ contains no copy of $Q_k$.  Thus $\iota_1=\iota$.
+
+\begin{theorem}[Exact dictionary]\label{thm:dictionary}
+For $0\le m\le n$ and $r\ge0$,
+\[
+  \iota_r(Q_n,Q_{n-m})=\CAN_r(m,n,2).
+\]
+In particular,
+\[
+  \iota(Q_n,Q_k)=\CAN_1(n-k,n,2).
+\]
+\end{theorem}
+
+\begin{proof}
+By Lemma~\ref{lem:coordinate-copy}, it suffices to hit every coordinate
+$(n-m)$-face.  Such a face is specified by a set $S$ of $m$ fixed coordinates
+and a pattern $a\in\{0,1\}^S$.  The minimum Hamming distance from a word $d$ to
+that face is exactly $d_H(d|_S,a)$, because the free coordinates may be chosen
+to agree with $d$.  Hence the radius-$r$ neighborhood of $D$ meets every such
+face exactly when every $m$-column projection of the row array $D$ has covering
+radius at most $r$.
+\end{proof}
+
+\section{A fixed-codimension phase transition}
+
+Let
+\[
+  B_{m,r}=\sum_{j=0}^r {m\choose j}.
+\]
+
+\begin{theorem}[Phase transition]\label{thm:phase}
+Fix $m\ge1$ and $r\ge0$.  As $n\to\infty$,
+\[
+\CAN_r(m,n,2)=
+\begin{cases}
+1, & m\le r,\\
+2, & r<m\le 2r+1,\\
+\Theta_{m,r}(\log n), & m\ge 2r+2.
+\end{cases}
+\]
+More explicitly, in the third regime every $M$-row array satisfies
+\[
+  n\le (m-1)2^M,
+\]
+and a random construction gives
+\[
+ \CAN_r(m,n,2)
+ \le 1+\left\lceil
+ \frac{\log\!\left(2^m{n\choose m}\right)}
+ {-\log\!\left(1-B_{m,r}/2^m\right)}
+ \right\rceil.
+\]
+\end{theorem}
+
+\begin{proof}
+If $m\le r$, one row covers every $m$-tuple.  If $r<m\le2r+1$, one row is
+insufficient, while the two constant complementary rows cover every target
+because $\min\{|a|,m-|a|\}\le\lfloor m/2\rfloor\le r$.
+
+Now assume $m\ge2r+2$.  Regard each column of an $M\times n$ array as a word in
+$\{0,1\}^M$.  If one column type occurred at least $m$ times, select those
+columns and a target with exactly $r+1$ ones.  Every projected row would be
+$0^m$ or $1^m$, at distance at least $r+1$ from the target.  Thus every one of
+the $2^M$ column types occurs at most $m-1$ times, proving the lower bound.
+
+For the upper bound, choose $M$ independent uniform binary rows.  For a fixed
+$m$-set of columns and a fixed target, the probability that no row lies within
+radius $r$ is $(1-B_{m,r}/2^m)^M$.  A union bound over
+$2^m{n\choose m}$ choices is less than one for the displayed value of $M$.
+\end{proof}
+
+\begin{corollary}
+For fixed $m$,
+\[
+\iota(Q_n,Q_{n-m})=
+\begin{cases}
+1,&m=1,\\
+2,&m=2,3,\\
+\Theta_m(\log n),&m\ge4.
+\end{cases}
+\]
+Consequently, for every fixed $m\ge4$,
+$\iota(Q_n,Q_{n-m})/\gamma(Q_m)\to\infty$.
+\end{corollary}
+
+\section{Perfect projections and robust extension}
+
+Let
+\[
+ \Vol_q(N,R)=\sum_{j=0}^R {N\choose j}(q-1)^j
+\]
+be the volume of a $q$-ary Hamming ball.
+
+\begin{theorem}[Perfect-code extension obstruction]\label{thm:perfect}
+Suppose a perfect $q$-ary radius-$r$ covering code of length $m$ exists, so
+$\Kcov_q(m,r)\Vol_q(m,r)=q^m$.  Let $\ell\ge1$.  If
+\[
+ \Kcov_q(m,r)\Vol_q\!\left(m+\ell,
+     r+\left\lfloor\ell/2\right\rfloor\right)>q^{m+\ell},
+\]
+then
+\[
+ \CAN_r(m,m+\ell,q)>\Kcov_q(m,r).
+\]
+\end{theorem}
+
+\begin{proof}
+Assume an array with $\Kcov_q(m,r)$ rows exists.  Every $m$-column projection
+is a radius-$r$ covering code of optimal perfect size.  Since the sum of the
+sizes of its radius-$r$ balls equals the whole space, those balls partition the
+space; thus each projection has minimum distance at least $2r+1$.
+
+Take two full rows at distance $d$.  Delete $\ell$ coordinates containing as
+many of their disagreements as possible.  If $d\le2r+\ell$, the remaining
+$m$-projection has distance at most $2r$, contradiction.  Therefore the full
+array has minimum distance at least $2r+1+\ell$.  Hamming balls of radius
+$r+\lfloor\ell/2\rfloor$ around its rows are disjoint, and the Hamming packing
+bound contradicts the displayed strict inequality.
+\end{proof}
+
+\section{Hamming families}
+
+\begin{corollary}[Binary fixed-$Q_2$ family]\label{cor:binary-hamming}
+Let $t\ge3$ and $m=2^t-1$.  For every $k\ge1$,
+\[
+  \iota(Q_{m+k},Q_k)=\gamma(Q_m)
+  \quad\Longleftrightarrow\quad k=1.
+\]
+In particular, $\iota(Q_{2^t+1},Q_2)>\gamma(Q_{2^t-1})$ for every $t\ge3$.
+\end{corollary}
+
+\begin{proof}
+A binary Hamming code is a perfect radius-one code of length $m$.  Equality for
+$k=1$ is the binary parity-extension theorem for radius-covering arrays.  For
+$k=2$, Theorem~\ref{thm:perfect} applies because
+\[
+ \Vol_2(m+2,2)-4\Vol_2(m,1)=\frac{m(m-3)}2>0.
+\]
+Monotonicity in the number of columns gives strict inequality for every
+$k\ge2$.
+\end{proof}
+
+\begin{corollary}[q-ary Hamming family]
+Let $q$ be a prime power, $t\ge3$, and
+$m=(q^t-1)/(q-1)$.  Then
+\[
+ \CAN_1(m,m+2,q)>\Kcov_q(m,1).
+\]
+\end{corollary}
+
+\begin{proof}
+The $q$-ary Hamming code is perfect, and
+\[
+ \Vol_q(m+2,2)-q^2\Vol_q(m,1)
+ =\frac{(q-1)^2m(m+1-2q)}2>0.
+\]
+\end{proof}
+
+\section{The smallest illustration and provenance}
+
+The established radius-covering-array tables give
+$\CAN_1(4,6,2)=5$.  Theorem~\ref{thm:dictionary} therefore yields
+\[
+  \iota(Q_6,Q_2)=5>4=\gamma(Q_4).
+\]
+One minimum set is
+\[
+ \{000000,000011,000101,111001,111110\}.
+\]
+This numerical value is not claimed as new.  An independent proof, exhaustive
+Python enumeration, and a Lean finite certificate are retained for direct
+auditing in graph language.
+
+\section{Formal verification boundary}
+
+The accompanying Lean development verifies the coordinate-copy theorem, the
+exact distance-to-face identity, the equivalence between face hitting and the
+radius-covering-array predicate, and the arithmetic core of the binary Hamming
+obstruction.  The finite $(6,2)$ certificate is complete, but its exhaustive
+four-row lower bound uses \texttt{native\_decide} with the generated axiom
+reported explicitly.  A full formal proof of Theorem~\ref{thm:perfect},
+including the general Hamming packing count, remains a stated gate rather than
+a completed claim.
+
+\section{Open directions}
+
+The dictionary converts several graph questions into coding/design questions.
+Natural next problems are to determine sharp logarithmic constants for fixed
+$m,r$, characterize all pairs for which equality with a covering-code number
+survives, and study analogous isolation parameters in Hamming graphs and other
+Cartesian products.
+
+\begin{thebibliography}{9}
+
+\bibitem{BresarRall2026}
+B.~Bre\v{s}ar and D.~F. Rall,
+\newblock On the isolation numbers in graph products,
+\newblock arXiv:2608.25752, 2026.
+
+\bibitem{CKRSSP2010}
+C.~J. Colbourn, G.~K\'eri, P.~P. Rivas Soriano, and J.-C. Schlage-Puchta,
+\newblock Covering and radius-covering arrays: Constructions and classification,
+\newblock \emph{Discrete Applied Mathematics} 158 (2010), 1158--1180.
+
+\end{thebibliography}
+
+\end{document}
