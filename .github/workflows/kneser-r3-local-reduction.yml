@@ -1,0 +1,32 @@
+name: Verify KG(12,3) local-star reduction
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - tools/verify_kneser_r3_local_reduction.py
+      - experiments/kneser_ramsey/R3_LOCAL_STAR_REDUCTION.md
+      - .github/workflows/kneser-r3-local-reduction.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify counts, K4 equivalence, and neighborhood decomposition
+        run: |
+          python tools/verify_kneser_r3_local_reduction.py \
+            | tee local-star-verification.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kg12-r3-local-star-verification
+          path: local-star-verification.json
+          retention-days: 30
