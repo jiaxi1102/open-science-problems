@@ -1,0 +1,63 @@
+name: Kneser symmetric Y-template scan
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - tools/kneser_y_template_symmetric.py
+      - .github/workflows/kneser-y-template-symmetric.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: r3-cyclic
+            r: 3
+            symmetry: cyclic
+          - label: r3-dihedral
+            r: 3
+            symmetry: dihedral
+          - label: r6-cyclic
+            r: 6
+            symmetry: cyclic
+          - label: r6-dihedral
+            r: 6
+            symmetry: dihedral
+          - label: r7-cyclic
+            r: 7
+            symmetry: cyclic
+          - label: r7-dihedral
+            r: 7
+            symmetry: dihedral
+          - label: r8-cyclic
+            r: 8
+            symmetry: cyclic
+          - label: r9-cyclic
+            r: 9
+            symmetry: cyclic
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install SAT solver
+        run: pip install 'python-sat==1.8.dev17'
+      - name: Solve ${{ matrix.label }}
+        run: |
+          python tools/kneser_y_template_symmetric.py \
+            --r ${{ matrix.r }} --symmetry '${{ matrix.symmetry }}' \
+            --out experiments/kneser_ramsey/results/${{ matrix.label }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.label }}
+          path: experiments/kneser_ramsey/results/${{ matrix.label }}.json
+          if-no-files-found: warn
