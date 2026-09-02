@@ -205,7 +205,7 @@ def forcing_path(pair: Pair, path: Sequence[Triple], initial: bool) -> dict[str,
             "forced_target_new_edge": "red" if forced else "blue",
         })
         current = forced
-    assert current == not initial
+    assert current == (not initial)
     return {
         "initial_new_edge_color": "red" if initial else "blue",
         "final_forced_color_on_same_edge": "red" if current else "blue",
