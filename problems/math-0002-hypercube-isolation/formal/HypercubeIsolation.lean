@@ -1,4 +1,5 @@
 import Lean
+import HypercubeIsolation.CubeCopies
 import HypercubeIsolation.StructuralTheory
 
 set_option maxHeartbeats 0
