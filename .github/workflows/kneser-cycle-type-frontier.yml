@@ -1,0 +1,56 @@
+name: Kneser cycle-type frontier
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - tools/kneser_cycle_type.py
+      - .github/workflows/kneser-cycle-type-frontier.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: kg8-r2-4x4
+            n: 8
+            k: 2
+            cycle: 4,4
+          - label: kg11-r3-6x5
+            n: 11
+            k: 3
+            cycle: 6,5
+          - label: kg14-r4-8x6
+            n: 14
+            k: 4
+            cycle: 8,6
+          - label: kg15-r4-8x7
+            n: 15
+            k: 4
+            cycle: 8,7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install SAT solver
+        run: pip install 'python-sat==1.8.dev17'
+      - name: Solve ${{ matrix.label }}
+        run: |
+          python tools/kneser_cycle_type.py \
+            --n ${{ matrix.n }} --k ${{ matrix.k }} \
+            --cycle-type '${{ matrix.cycle }}' \
+            --out experiments/kneser_ramsey/results/${{ matrix.label }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.label }}
+          path: experiments/kneser_ramsey/results/${{ matrix.label }}.json
+          if-no-files-found: warn
