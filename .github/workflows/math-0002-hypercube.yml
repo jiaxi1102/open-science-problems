@@ -11,6 +11,10 @@ on:
       - .github/workflows/math-0002-hypercube.yml
   workflow_dispatch:
 
+concurrency:
+  group: math-0002-hypercube-verification
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
