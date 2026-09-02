@@ -1,0 +1,36 @@
+name: Kneser Ramsey symmetric search
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - experiments/kneser_ramsey/solve_symmetric.py
+      - .github/workflows/kneser-ramsey-symmetric.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        step: [1, 2, 3, 4, 6]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install 'python-sat==1.8.dev17'
+      - name: Solve cyclic quotient
+        run: |
+          python experiments/kneser_ramsey/solve_symmetric.py \
+            --n 12 --k 3 --step ${{ matrix.step }} \
+            --out experiments/kneser_ramsey/results/kg_12_3_step_${{ matrix.step }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kg-12-3-step-${{ matrix.step }}
+          path: experiments/kneser_ramsey/results/kg_12_3_step_${{ matrix.step }}.json
