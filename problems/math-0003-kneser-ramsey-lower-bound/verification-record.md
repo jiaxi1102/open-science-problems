@@ -1,17 +1,25 @@
 # Verification record
 
+## Clean review branch
+
 - Repository: `jiaxi1102/open-science-problems`
-- Branch: `math-kneser-ramsey-frontier`
-- Verified commit: `6877b53a52e03d53baf817457ae95f9953457c40`
-- GitHub Actions run: `33683038605`
-- Job: `100423855952`
+- Branch: `math-0003-five-point-kneser`
+- Verified source commit: `2cc6f5a2a91ba0e096977669cfb7b400f870a4bd`
+- Draft pull request: `#5`
+- GitHub Actions run: `33684568921`
+- Job: `100428818987`
 - Conclusion: `success`
 - Verified: 2 September 2026
 - Runner: Ubuntu 24.04
 - Lean: 4.33.1
 - Proof mode: `decide +kernel`
 
-The workflow performed three independent checks:
+The same theorem sources had previously passed on the exploratory branch at
+commit `6877b53a52e03d53baf817457ae95f9953457c40`, run `33683038605`, job
+`100423855952`. The clean PR run independently checked the focused 12-file
+review package.
+
+## Checks performed
 
 1. `tools/verify_kneser_five_point.py` exhaustively checked all `918` labeled
    partitions of the five distinguished points with at most two unused
