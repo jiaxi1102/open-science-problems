@@ -1,0 +1,42 @@
+name: Kneser explicit central core
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - tools/kneser_central_fixed.py
+      - .github/workflows/kneser-central-fixed.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        swap: [plain, swapped]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install SAT solver
+        run: pip install 'python-sat==1.8.dev17'
+      - name: Test star-leftover central core
+        shell: bash
+        run: |
+          extra=""
+          if [[ '${{ matrix.swap }}' == 'swapped' ]]; then extra="--swap"; fi
+          python tools/kneser_central_fixed.py \
+            --r 4 --distinguished 0 $extra \
+            --out experiments/kneser_ramsey/results/central-star-${{ matrix.swap }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: central-star-${{ matrix.swap }}
+          path: experiments/kneser_ramsey/results/central-star-${{ matrix.swap }}.json
+          if-no-files-found: warn
