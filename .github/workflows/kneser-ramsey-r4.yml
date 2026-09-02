@@ -1,0 +1,32 @@
+name: Kneser Ramsey r4 frontier
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - experiments/kneser_ramsey/solve_large.py
+      - .github/workflows/kneser-ramsey-r4.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install 'python-sat==1.8.dev17'
+      - name: Solve KG(14,4)
+        run: |
+          python experiments/kneser_ramsey/solve_large.py \
+            --n 14 --k 4 \
+            --out experiments/kneser_ramsey/results/kg_14_4.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kg-14-4-result
+          path: experiments/kneser_ramsey/results/kg_14_4.json
