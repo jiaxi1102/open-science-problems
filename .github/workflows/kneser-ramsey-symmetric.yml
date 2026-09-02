@@ -18,7 +18,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        step: [1, 2, 3, 4, 6]
+        include:
+          - {n: 11, step: 1}
+          - {n: 12, step: 1}
+          - {n: 12, step: 2}
+          - {n: 12, step: 3}
+          - {n: 12, step: 4}
+          - {n: 12, step: 6}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -28,9 +34,9 @@ jobs:
       - name: Solve cyclic quotient
         run: |
           python experiments/kneser_ramsey/solve_symmetric.py \
-            --n 12 --k 3 --step ${{ matrix.step }} \
-            --out experiments/kneser_ramsey/results/kg_12_3_step_${{ matrix.step }}.json
+            --n ${{ matrix.n }} --k 3 --step ${{ matrix.step }} \
+            --out experiments/kneser_ramsey/results/kg_${{ matrix.n }}_3_step_${{ matrix.step }}.json
       - uses: actions/upload-artifact@v4
         with:
-          name: kg-12-3-step-${{ matrix.step }}
-          path: experiments/kneser_ramsey/results/kg_12_3_step_${{ matrix.step }}.json
+          name: kg-${{ matrix.n }}-3-step-${{ matrix.step }}
+          path: experiments/kneser_ramsey/results/kg_${{ matrix.n }}_3_step_${{ matrix.step }}.json
