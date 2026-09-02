@@ -27,25 +27,34 @@ The posted paper proves the weaker uniform lower bound `3r+2`, determines the
 search performed for this repository did not find the five-point coloring or
 its one-point rigidity theorem in that source.
 
-## Weighted odd-cycle ingredient
+## The filler lemma is elementary
 
-The anonymous-filler step uses the integer decomposition property of the
-stable-set polytope of an odd cycle. A convenient source is:
+An earlier draft invoked the integer decomposition property of the stable-set
+polytope of an odd cycle. That dependency has been removed.
+
+The final proof gives an explicit cyclic-interval construction. For demands
+`d_i` on an odd cycle of length `2q+1` and a palette of size `m`, assume
+
+\[
+d_i+d_{i+1}\le m,
+\qquad
+\sum_i d_i\le qm.
+\]
+
+Choose bounded gaps `g_i` whose sum makes the total cyclic advance exactly
+`qm`, and assign to each position an interval of `d_i` consecutive palette
+points. Adjacent intervals are disjoint and the walk closes. This directly
+constructs all anonymous filler sets needed by the Kneser proof.
+
+For context, the same feasibility criterion also follows from standard
+weighted-coloring/polyhedral results such as:
 
 - Yohann Benchetrit, *Integer round-up property for the chromatic number of
   some h-perfect graphs*, Mathematical Programming 164 (2017), 261-281;
   arXiv:1406.0757.
 
-The paper defines weighted coloring by multisets of stable sets and proves the
-integer round-up property for t-perfect claw-free graphs. It states the
-equivalent polyhedral formulation that the stable-set polytope has the integer
-decomposition property. Odd cycles are claw-free and their stable-set
-polytope is given by nonnegativity, edge, and odd-hole inequalities, exactly
-the inequalities checked in the proof.
-
-The imported theorem is standard prior mathematics and is not claimed as a
-new contribution here. The new part is the pair of periodic five-point trace
-cycles and their use as signed forcing obstructions for every rank.
+That paper is now only corroborating background, not a logical dependency of
+the theorem.
 
 ## Searches performed
 
@@ -58,7 +67,8 @@ Targeted searches included combinations of:
 - `critical coloring Kneser Ramsey`;
 - the exact displayed lower-bound and saturation statements.
 
-No Kneser-specific result matching the proposed theorem was located.
+No Kneser-specific result matching the proposed theorem or the periodic
+signed-cycle construction was located.
 
 ## Nearby terminology that is not the same result
 
