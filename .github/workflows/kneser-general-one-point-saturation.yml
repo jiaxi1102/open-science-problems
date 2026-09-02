@@ -1,0 +1,37 @@
+name: Verify uniform one-point saturation templates
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - tools/verify_kneser_five_point.py
+      - tools/verify_kneser_general_saturation_templates.py
+      - experiments/kneser_ramsey/GENERAL_ONE_POINT_SATURATION.md
+      - .github/workflows/kneser-general-one-point-saturation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify trace blocks and weighted-cycle inequalities
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/verify_kneser_general_saturation_templates.py \
+            | tee general-one-point-saturation.json
+          test -s general-one-point-saturation.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kneser-general-one-point-saturation
+          path: general-one-point-saturation.json
+          if-no-files-found: error
+          retention-days: 30
