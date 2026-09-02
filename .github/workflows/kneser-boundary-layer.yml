@@ -1,0 +1,51 @@
+name: Kneser boundary-layer normal form
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - tools/kneser_boundary_layer.py
+      - .github/workflows/kneser-boundary-layer.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: r3-product
+            r: 3
+            symmetry: product
+          - label: r4-product
+            r: 4
+            symmetry: product
+          - label: r4-diagonal
+            r: 4
+            symmetry: diagonal
+          - label: r4-none
+            r: 4
+            symmetry: none
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install SAT solver
+        run: pip install 'python-sat==1.8.dev17'
+      - name: Solve ${{ matrix.label }}
+        run: |
+          python tools/kneser_boundary_layer.py \
+            --r ${{ matrix.r }} --symmetry '${{ matrix.symmetry }}' \
+            --out experiments/kneser_ramsey/results/boundary-${{ matrix.label }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: boundary-${{ matrix.label }}
+          path: experiments/kneser_ramsey/results/boundary-${{ matrix.label }}.json
+          if-no-files-found: warn
