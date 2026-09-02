@@ -1,0 +1,98 @@
+name: math-0004 K4-branch solver portfolio
+
+on:
+  push:
+    branches:
+      - experiment/math-0004-kneser-r3-exact
+    paths:
+      - tools/search_kneser_r3_exact.py
+      - tools/run_pysat_exact.py
+      - .github/workflows/math-0004-k4-portfolio.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  decide:
+    strategy:
+      fail-fast: false
+      matrix:
+        k4_case: [cycle-matching, path-path]
+        solver: [kissat, glucose42]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate asserted K4 branch
+        run: |
+          mkdir -p artifacts
+          python tools/search_kneser_r3_exact.py generate \
+            artifacts/instance.cnf artifacts/instance.json \
+            --k4-case '${{ matrix.k4_case }}' \
+            | tee artifacts/generator-output.json
+          sha256sum artifacts/instance.cnf > artifacts/instance.sha256
+
+      - name: Install pinned Kissat
+        if: matrix.solver == 'kissat'
+        run: |
+          curl --fail --location --retry 4 \
+            --output artifacts/kissat.zip \
+            https://github.com/arminbiere/kissat/releases/download/rel-4.0.4/kissat-4.0.4-linux-amd64.zip
+          echo '63282e5168ca040a2018edfba0726bf893a7a6bcdb1db87feb67857e2da697a7  artifacts/kissat.zip' \
+            | sha256sum --check
+          unzip -q artifacts/kissat.zip -d artifacts/kissat
+          KISSAT=$(find artifacts/kissat -type f -name 'kissat*' | head -n 1)
+          chmod +x "$KISSAT"
+          echo "SOLVER_COMMAND=$KISSAT artifacts/instance.cnf" >> "$GITHUB_ENV"
+          "$KISSAT" --version | tee artifacts/solver-version.txt
+
+      - name: Install PySAT Glucose42
+        if: matrix.solver == 'glucose42'
+        run: |
+          python -m pip install --disable-pip-version-check 'python-sat==1.8.dev24'
+          python - <<'PY' | tee artifacts/solver-version.txt
+          import pysat
+          print('python-sat', pysat.__version__)
+          PY
+          echo 'SOLVER_COMMAND=python tools/run_pysat_exact.py artifacts/instance.cnf' >> "$GITHUB_ENV"
+
+      - name: Decide branch
+        shell: bash
+        run: |
+          set +e
+          timeout --signal=TERM 75m bash -lc "$SOLVER_COMMAND" \
+            > artifacts/solver-output.txt \
+            2> artifacts/solver-stderr.txt
+          status=$?
+          set -e
+          echo "$status" | tee artifacts/solver-exit-status.txt
+          cat artifacts/solver-output.txt
+          cat artifacts/solver-stderr.txt >&2
+          if [[ "$status" != 10 && "$status" != 20 ]]; then
+            echo "solver did not return SAT (10) or UNSAT (20)" >&2
+            exit "$status"
+          fi
+
+      - name: Verify model or preserve UNSAT status boundary
+        run: |
+          python tools/search_kneser_r3_exact.py verify \
+            artifacts/solver-output.txt artifacts/instance.json \
+            | tee artifacts/verification.json
+          find artifacts -maxdepth 1 -type f -print0 \
+            | sort -z \
+            | xargs -0 sha256sum > artifacts/SHA256SUMS.txt
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: math-0004-${{ matrix.k4_case }}-${{ matrix.solver }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 90
