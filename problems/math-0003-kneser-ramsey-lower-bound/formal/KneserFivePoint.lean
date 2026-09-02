@@ -1,4 +1,4 @@
-import Std.Tactic.NativeDecide
+import Lean.Elab.Tactic.Decide
 
 /-!
 # Five-point trace gadget for Kneser Ramsey colorings
