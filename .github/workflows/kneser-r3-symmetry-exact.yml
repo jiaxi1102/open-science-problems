@@ -1,0 +1,135 @@
+name: Exact KG(12,3) with structural symmetry breaking
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - tools/kneser_exact_cnf.py
+      - .github/workflows/kneser-r3-symmetry-exact.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [matching, path]
+        symmetry_mode: [lex, fix]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate exact DIMACS instance
+        run: |
+          mkdir -p out
+          python tools/kneser_exact_cnf.py generate \
+            --n 12 --k 3 --seed '${{ matrix.seed }}' \
+            --cnf out/original.cnf \
+            --metadata out/metadata.json
+
+      - name: Build pinned Satsuma and Kissat
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          git clone --quiet --recurse-submodules https://github.com/markusa4/satsuma.git /tmp/satsuma
+          git -C /tmp/satsuma checkout --quiet c6ad1b59f29fa32dae587ef369135735f40d498a
+          git -C /tmp/satsuma submodule update --init --recursive
+          cmake -S /tmp/satsuma -B /tmp/satsuma/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build /tmp/satsuma/build --target satsuma --parallel 2
+
+          git clone --quiet https://github.com/arminbiere/kissat.git /tmp/kissat
+          git -C /tmp/kissat checkout --quiet 8af8e56f174b778aef3aa45af9f739b2a5f492c2
+          cd /tmp/kissat
+          ./configure
+          make -C build -j2
+
+          test -x /tmp/satsuma/build/satsuma
+          test -x /tmp/kissat/build/kissat
+          /tmp/satsuma/build/satsuma --help > "$GITHUB_WORKSPACE/out/satsuma-help.txt" 2>&1 || true
+          /tmp/kissat/build/kissat --version > "$GITHUB_WORKSPACE/out/kissat-version.txt"
+
+      - name: Detect and break the exact CNF symmetries
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if [[ '${{ matrix.symmetry_mode }}' == 'lex' ]]; then
+            /tmp/satsuma/build/satsuma lex --opt-reopt out/original.cnf \
+              > out/symmetry-broken.cnf 2> out/satsuma.log
+          else
+            /tmp/satsuma/build/satsuma fix --add-reduced-as-unit out/original.cnf \
+              > out/symmetry-broken.cnf 2> out/satsuma.log
+          fi
+          grep '^p cnf' out/original.cnf out/symmetry-broken.cnf | tee out/cnf-sizes.txt
+
+      - name: Solve the symmetry-broken instance with Kissat
+        id: solve
+        shell: bash
+        run: |
+          set +e
+          timeout --signal=TERM --kill-after=30s 45m \
+            /tmp/kissat/build/kissat out/symmetry-broken.cnf \
+            > out/solver.log 2>&1
+          rc=$?
+          set -e
+
+          if grep -q 's SATISFIABLE' out/solver.log; then
+            status=SATISFIABLE
+            python tools/kneser_exact_cnf.py check \
+              --n 12 --k 3 --seed '${{ matrix.seed }}' \
+              --model out/solver.log \
+              --out out/validated-witness.json
+          elif grep -q 's UNSATISFIABLE' out/solver.log; then
+            status=UNSATISFIABLE
+          elif [[ "$rc" -eq 124 || "$rc" -eq 137 || "$rc" -eq 143 ]]; then
+            status=TIMEOUT
+          else
+            status=ERROR
+          fi
+
+          python - "$status" "$rc" '${{ matrix.seed }}' '${{ matrix.symmetry_mode }}' <<'PY'
+          import json, pathlib, sys
+          status, rc, seed, mode = sys.argv[1:]
+          metadata = json.loads(pathlib.Path('out/metadata.json').read_text())
+          result = {
+              **metadata,
+              'seed_type': seed,
+              'symmetry_mode': mode,
+              'solver': 'kissat',
+              'solver_status': status,
+              'solver_exit_code': int(rc),
+              'satsuma_commit': 'c6ad1b59f29fa32dae587ef369135735f40d498a',
+              'kissat_commit': '8af8e56f174b778aef3aa45af9f739b2a5f492c2',
+          }
+          pathlib.Path('out/result.json').write_text(json.dumps(result, indent=2, sort_keys=True) + '\n')
+          print(json.dumps(result, indent=2, sort_keys=True))
+          PY
+
+          if [[ "$status" == 'ERROR' ]]; then
+            tail -200 out/solver.log
+            exit 1
+          fi
+
+      - name: Upload exact-search evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kg12-r3-${{ matrix.seed }}-${{ matrix.symmetry_mode }}
+          path: |
+            out/metadata.json
+            out/result.json
+            out/validated-witness.json
+            out/cnf-sizes.txt
+            out/satsuma.log
+            out/solver.log
+            out/kissat-version.txt
+          if-no-files-found: warn
+          retention-days: 30
