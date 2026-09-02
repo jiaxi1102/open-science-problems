@@ -1,0 +1,31 @@
+name: Compact KG(14,4) certificate
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - tools/verify_kneser_r4_orbit_certificate.py
+      - experiments/kneser_ramsey/certificates/kg14_r4_8x6.json
+      - experiments/kneser_ramsey/R4_CERTIFICATE.md
+      - .github/workflows/kneser-r4-certificate.yml
+  pull_request:
+    paths:
+      - tools/verify_kneser_r4_orbit_certificate.py
+      - experiments/kneser_ramsey/certificates/kg14_r4_8x6.json
+      - experiments/kneser_ramsey/R4_CERTIFICATE.md
+      - .github/workflows/kneser-r4-certificate.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reconstruct and verify all 525,525 triangles
+        run: python tools/verify_kneser_r4_orbit_certificate.py
