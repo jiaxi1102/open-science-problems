@@ -2,7 +2,7 @@ name: math-0003 five-point Kneser lower bound
 
 on:
   push:
-    branches: [math-kneser-ramsey-frontier]
+    branches: [math-0003-five-point-kneser]
     paths:
       - problems/math-0003-kneser-ramsey-lower-bound/**
       - tools/verify_kneser_five_point.py
