@@ -26,7 +26,7 @@ jobs:
           python-version: '3.12'
       - name: Install SAT solver
         run: pip install 'python-sat==1.8.dev17'
-      - name: Solve balanced-cut factor for KG(${{ matrix.r * 4 }},${{ matrix.r }})
+      - name: Solve balanced-cut factor
         run: |
           python tools/kneser_union_factor.py \
             --r ${{ matrix.r }} \
