@@ -43,9 +43,16 @@ jobs:
             | sha256sum --check --strict
           mkdir kissat-bin
           unzip -q kissat.zip -d kissat-bin
-          KISSAT="$(find kissat-bin -type f -name kissat | head -n 1)"
+          find kissat-bin -maxdepth 3 -type f -printf '%s %p\n' \
+            | sort -nr | tee kissat-archive-files.txt
+          KISSAT="$(find kissat-bin -maxdepth 3 -type f -iname 'kissat*' | head -n 1)"
+          if [[ -z "$KISSAT" ]]; then
+            KISSAT="$(find kissat-bin -maxdepth 3 -type f -printf '%s %p\n' \
+              | sort -nr | head -n 1 | cut -d' ' -f2-)"
+          fi
           test -n "$KISSAT"
           chmod +x "$KISSAT"
+          file "$KISSAT"
           echo "KISSAT=$KISSAT" >> "$GITHUB_ENV"
           "$KISSAT" --version | tee kissat-version.txt
 
@@ -118,5 +125,6 @@ jobs:
           path: |
             results/${{ matrix.configuration }}/
             kissat-version.txt
+            kissat-archive-files.txt
           if-no-files-found: error
           retention-days: 30
