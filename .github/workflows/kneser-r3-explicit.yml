@@ -1,0 +1,29 @@
+name: Explicit KG(11,3) coloring
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - tools/verify_kneser_r3_explicit.py
+      - experiments/kneser_ramsey/EXPLICIT_R3.md
+      - .github/workflows/kneser-r3-explicit.yml
+  pull_request:
+    paths:
+      - tools/verify_kneser_r3_explicit.py
+      - experiments/kneser_ramsey/EXPLICIT_R3.md
+      - .github/workflows/kneser-r3-explicit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify all 15,400 Kneser triangles
+        run: python tools/verify_kneser_r3_explicit.py
