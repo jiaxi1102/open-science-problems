@@ -25,7 +25,7 @@ jobs:
         shell: bash
         working-directory: problems/math-0002-hypercube-isolation/formal
         run: |
-          if grep -nE '\b(sorry|admit)\b' HypercubeIsolation.lean; then
+          if grep -RInE --include='*.lean' '\b(sorry|admit)\b' .; then
             echo "Unfinished proof marker found"
             exit 1
           fi
@@ -40,8 +40,8 @@ jobs:
           build: true
           test: false
           lint: false
-          use-mathlib-cache: false
-          use-github-cache: false
+          use-mathlib-cache: true
+          use-github-cache: true
           leanchecker: true
           leanchecker-args: "HypercubeIsolation"
           axiom-audit: false
