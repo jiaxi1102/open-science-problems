@@ -44,7 +44,14 @@ jobs:
           echo '63282e5168ca040a2018edfba0726bf893a7a6bcdb1db87feb67857e2da697a7  kissat.zip' \
             | sha256sum --check --strict
           unzip -q kissat.zip -d kissat-dist
-          KISSAT="$(find kissat-dist -type f -name kissat -print -quit)"
+          find kissat-dist -type f -print | sort | tee result/kissat-archive-files.txt
+          KISSAT=''
+          while IFS= read -r candidate; do
+            if file "$candidate" | grep -q 'ELF'; then
+              KISSAT="$candidate"
+              break
+            fi
+          done < <(find kissat-dist -type f -print | sort)
           test -n "$KISSAT"
           chmod +x "$KISSAT"
           "$KISSAT" --version | tee result/kissat-version.txt
