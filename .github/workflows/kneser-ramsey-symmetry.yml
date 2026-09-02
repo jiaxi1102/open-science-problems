@@ -1,0 +1,61 @@
+name: Kneser Ramsey symmetry frontier
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - experiments/kneser_ramsey/**
+      - .github/workflows/kneser-ramsey-symmetry.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-r3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [matching, path]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install SAT solver
+        run: pip install 'python-sat==1.8.dev17'
+      - name: Solve canonical KG(12,3) class ${{ matrix.seed }}
+        run: |
+          python experiments/kneser_ramsey/solve_triangle_free.py \
+            --n 12 --k 3 --seed-type ${{ matrix.seed }} \
+            --out experiments/kneser_ramsey/results/kg_12_3_${{ matrix.seed }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kg-12-3-${{ matrix.seed }}
+          path: experiments/kneser_ramsey/results/kg_12_3_${{ matrix.seed }}.json
+          if-no-files-found: warn
+
+  cyclic-r4:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install SAT solver
+        run: pip install 'python-sat==1.8.dev17'
+      - name: Search for a cyclic KG(14,4) witness
+        run: |
+          python experiments/kneser_ramsey/solve_symmetric.py \
+            --n 14 --k 4 --step 1 \
+            --out experiments/kneser_ramsey/results/kg_14_4_cyclic.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kg-14-4-cyclic
+          path: experiments/kneser_ramsey/results/kg_14_4_cyclic.json
+          if-no-files-found: warn
