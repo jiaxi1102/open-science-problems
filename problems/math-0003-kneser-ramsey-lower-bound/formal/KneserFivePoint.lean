@@ -63,7 +63,7 @@ def red (a b : Trace) : Bool :=
 
 /-- The four-rule coloring is symmetric in its two trace arguments. -/
 theorem red_symm : ∀ a b : Trace, red a b = red b a := by
-  native_decide
+  decide +kernel
 
 /--
 The finite five-point gadget: pairwise-disjoint traces whose union contains at
@@ -76,7 +76,7 @@ theorem fivePointGadget :
       disjoint b c = true →
       atLeastThree (a ||| b ||| c) = true →
       ¬ (red a b = red a c ∧ red a c = red b c) := by
-  native_decide
+  decide +kernel
 
 #print axioms KneserFivePoint.red_symm
 #print axioms KneserFivePoint.fivePointGadget
