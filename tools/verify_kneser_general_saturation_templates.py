@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-"""Verify the symbolic trace templates for uniform one-point saturation.
+"""Verify the uniform one-point-saturation construction.
 
 For every r >= 3 the proof uses a red-defect odd trace cycle and a blue-defect
-odd trace cycle through the same base trace {0,1}. Anonymous fillers exist by
-the weighted odd-cycle multicoloring lemma once two elementary inequalities
-are met. This program verifies the finite trace blocks and those inequalities
-for r=3,...,1000; the accompanying proof establishes the formulas for all r.
+odd trace cycle through the same base trace {0,1}. This verifier checks the
+periodic trace words and then *constructs* all anonymous filler sets by an
+elementary cyclic-interval lemma. No third-party package or imported
+polyhedral theorem is used.
 """
 
 from __future__ import annotations
 
 import hashlib
+import itertools
 import json
 
 from verify_kneser_five_point import trace_color
@@ -76,6 +77,77 @@ def blue_cycle(r: int) -> tuple[int, ...]:
     return BLUE_BASE + BLUE_BLOCK * blue_repetitions(r)
 
 
+def cyclic_interval_fillers(
+    demands: tuple[int, ...],
+    palette_size: int,
+) -> tuple[tuple[frozenset[int], ...], tuple[int, ...], tuple[int, ...]]:
+    """Construct a weighted coloring of an odd cycle by cyclic intervals.
+
+    Let the cycle have length L=2q+1. The construction requires
+
+        d_i + d_{i+1} <= m  and  sum d_i <= q m.
+
+    Set c_i=m-d_i-d_{i+1} and G=q m-sum d_i. Choose integer gaps
+    0<=g_i<=c_i summing to G. Starting at s_0=0, place an interval of length
+    d_i in Z/mZ and advance by d_i+g_i. The total advance is q m, so the walk
+    closes; each adjacent pair is disjoint because its combined span is at
+    most m.
+    """
+
+    length = len(demands)
+    assert length >= 3 and length % 2 == 1
+    assert palette_size >= 1
+    q = (length - 1) // 2
+    assert all(0 <= demand <= palette_size for demand in demands)
+    assert all(
+        demands[index] + demands[(index + 1) % length] <= palette_size
+        for index in range(length)
+    )
+    total_demand = sum(demands)
+    assert total_demand <= q * palette_size
+
+    capacities = tuple(
+        palette_size - demands[index] - demands[(index + 1) % length]
+        for index in range(length)
+    )
+    required_gap = q * palette_size - total_demand
+    assert required_gap >= 0
+    assert sum(capacities) >= required_gap
+
+    remaining = required_gap
+    gaps = []
+    for capacity in capacities:
+        gap = min(capacity, remaining)
+        gaps.append(gap)
+        remaining -= gap
+    assert remaining == 0
+
+    starts = [0]
+    fillers = []
+    for index, demand in enumerate(demands):
+        start = starts[index]
+        fillers.append(
+            frozenset((start + offset) % palette_size for offset in range(demand))
+        )
+        starts.append((start + demand + gaps[index]) % palette_size)
+
+    assert starts[-1] == starts[0]
+    assert all(len(fillers[index]) == demands[index] for index in range(length))
+    assert all(
+        fillers[index].isdisjoint(fillers[(index + 1) % length])
+        for index in range(length)
+    )
+    return tuple(fillers), tuple(gaps), tuple(starts[:-1])
+
+
+def forcing_contradiction(edge_colors: tuple[bool, ...], initial_color: bool) -> bool:
+    current = initial_color
+    for old_edge_color in edge_colors:
+        assert current == old_edge_color
+        current = not current
+    return current != initial_color
+
+
 def verify_trace_cycle(
     r: int,
     traces: tuple[int, ...],
@@ -93,7 +165,7 @@ def verify_trace_cycle(
         color = trace_color(left, right)
         expected = first_color if index % 2 == 0 else not first_color
         assert color == expected
-        edge_colors.append(int(color))
+        edge_colors.append(color)
         adjacent_trace_sums.append(left.bit_count() + right.bit_count())
 
     trace_weight = sum(trace.bit_count() for trace in traces)
@@ -108,14 +180,27 @@ def verify_trace_cycle(
     )
     total_demand = sum(demands)
 
-    # These are exactly the clique and odd-hole inequalities saying that the
-    # demand vector lies in (2r-2) STAB(C_{2q+1}). The integer decomposition
-    # property of odd-cycle stable-set polytopes then supplies filler sets.
     assert min(adjacent_trace_sums) >= 2
     assert max_adjacent_demand <= anonymous_points
     assert total_demand <= independence_number * anonymous_points
     assert trace_weight >= len(traces) + r - 1
 
+    fillers, gaps, starts = cyclic_interval_fillers(demands, anonymous_points)
+    old_sets = tuple(
+        frozenset(point for point in range(5) if trace & (1 << point))
+        | frozenset(5 + point for point in filler)
+        for trace, filler in zip(traces, fillers)
+    )
+    assert all(len(old_set) == r for old_set in old_sets)
+    assert all(
+        old_sets[index].isdisjoint(old_sets[(index + 1) % len(old_sets)])
+        for index in range(len(old_sets))
+    )
+    assert forcing_contradiction(tuple(edge_colors), first_color)
+
+    filler_word = "|".join(
+        ",".join(map(str, sorted(filler))) for filler in fillers
+    )
     return {
         "length": len(traces),
         "trace_weight": trace_weight,
@@ -126,7 +211,17 @@ def verify_trace_cycle(
         "odd_cycle_capacity": independence_number * anonymous_points,
         "max_adjacent_filler_demand": max_adjacent_demand,
         "adjacent_capacity": anonymous_points,
-        "weighted_cycle_conditions_hold": True,
+        "required_total_gap": independence_number * anonymous_points - total_demand,
+        "actual_total_gap": sum(gaps),
+        "maximum_gap_capacity": sum(
+            anonymous_points - demands[index] - demands[(index + 1) % len(demands)]
+            for index in range(len(demands))
+        ),
+        "cyclic_interval_starts": list(starts),
+        "filler_assignment_sha256": hashlib.sha256(filler_word.encode()).hexdigest(),
+        "constructed_all_old_r_sets": True,
+        "constructed_adjacent_disjointness": True,
+        "forcing_cycle_closes_with_opposite_color": True,
     }
 
 
@@ -144,18 +239,56 @@ def verify_rank(r: int) -> dict[str, object]:
     assert sum(trace.bit_count() for trace in blue) == 8 + 6 * blue_t
     assert 4 + 2 * blue_t >= r
 
+    red_result = verify_trace_cycle(r, red, True)
+    blue_result = verify_trace_cycle(r, blue, False)
+    red_fillers, _, _ = cyclic_interval_fillers(
+        tuple(r - trace.bit_count() for trace in red), 2 * r - 2
+    )
+    blue_fillers, _, _ = cyclic_interval_fillers(
+        tuple(r - trace.bit_count() for trace in blue), 2 * r - 2
+    )
+    assert red_fillers[0] == blue_fillers[0]
+
     return {
         "r": r,
         "base_trace": [0, 1],
+        "common_base_filler": sorted(red_fillers[0]),
         "red_repetitions": red_t,
         "blue_repetitions": blue_t,
-        "red_defect_cycle": verify_trace_cycle(r, red, True),
-        "blue_defect_cycle": verify_trace_cycle(r, blue, False),
+        "red_defect_cycle": red_result,
+        "blue_defect_cycle": blue_result,
+        "both_cycles_use_same_old_base_vertex": True,
+        "both_colors_for_that_new_edge_are_impossible": True,
+    }
+
+
+def exhaustive_small_filler_lemma_check() -> dict[str, int | bool]:
+    instances = 0
+    for palette_size in range(1, 6):
+        for length in (3, 5, 7):
+            q = (length - 1) // 2
+            for demands in itertools.product(range(palette_size + 1), repeat=length):
+                if sum(demands) > q * palette_size:
+                    continue
+                if any(
+                    demands[index] + demands[(index + 1) % length] > palette_size
+                    for index in range(length)
+                ):
+                    continue
+                cyclic_interval_fillers(tuple(demands), palette_size)
+                instances += 1
+    return {
+        "palette_sizes_checked_through": 5,
+        "odd_lengths_checked_through": 7,
+        "admissible_instances_checked": instances,
+        "all_constructed": True,
     }
 
 
 def main() -> None:
-    # The range is a regression sweep, not the logical reason for universality.
+    # This sweep verifies the periodic formulas and the actual constructive
+    # fillers. Universality follows symbolically from the formulas in the
+    # accompanying proof, rather than from extrapolation beyond the sweep.
     sweep = [verify_rank(r) for r in range(3, 1001)]
     selected = {
         str(row["r"]): row
@@ -174,9 +307,9 @@ def main() -> None:
             "For every r >= 3, the explicit five-point coloring of "
             "KG(3r+2,r) is one-point saturated."
         ),
-        "proof_dependency": (
-            "Integer decomposition / weighted multicoloring for an odd cycle: "
-            "edge-demand inequalities plus the odd-cycle inequality suffice."
+        "filler_lemma": (
+            "Admissible integer demands on an odd cycle are realized by "
+            "explicit cyclic intervals; no external decomposition theorem is used."
         ),
         "symbolic_formulas": {
             "red_length": "5 + 6 t_R",
@@ -190,8 +323,9 @@ def main() -> None:
         "trace_blocks_sha256": hashlib.sha256(
             json.dumps(block_payload, separators=(",", ":"), sort_keys=True).encode()
         ).hexdigest(),
+        "small_filler_lemma_regression": exhaustive_small_filler_lemma_check(),
         "ranks_checked": [3, 1000],
-        "all_998_regression_ranks_passed": True,
+        "all_998_rank_constructions_passed": True,
         "selected_ranks": selected,
     }
     print(json.dumps(result, indent=2, sort_keys=True))
