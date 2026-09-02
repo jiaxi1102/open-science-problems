@@ -10,6 +10,7 @@ The repository is deliberately conservative about claims. A computational result
 |---|---|---|---|---|---|
 | `math-0001` | Hedgehog plucking-polynomial unimodality (Conjecture 4.1) | algebraic combinatorics / knot theory | `proposed-proof` | Lean 4 proof of stronger coefficient theorem | pending |
 | `math-0002` | Fractional \(5/2\)-cover number of \(KG(8,2)\) | graph theory / fractional coloring | `proposed-proof` | Lean 4 verification of the finite obstruction and matching-family classification | pending |
+| `math-0003` | Hypercube subcube isolation / radius-covering arrays | domination theory / coding theory | `refuted` with candidate structural theorem package | coordinate-copy theorem, coding bridge, and finite certificate in Lean | pending |
 
 See [`PROBLEMS.md`](PROBLEMS.md) for the registry and [`CONTRIBUTING.md`](CONTRIBUTING.md) for the required structure and claim standards.
 
@@ -61,3 +62,7 @@ A proposed proof of hedgehog plucking-polynomial unimodality for delays in `{1,2
 ### `math-0002`: fractional Kneser cover
 
 A proposed proof that the fractional \(5/2\)-cover number of \(KG(8,2)\) is exactly three, negatively answering an open two-cover question from arXiv:2607.12353v1. Lean verifies the exhaustive finite obstruction and the matching-family classification; the fractional-coloring, Tutte–Berge, symmetry, and explicit upper-bound bridge remains a written human argument pending independent review.
+
+### `math-0003`: hypercube subcube isolation
+
+A structural resolution of Brešar--Rall Problem 2. The project identifies subcube isolation exactly with binary radius-covering arrays, gives an infinite fixed-`Q_2` Hamming family of strict inequalities, and proves a fixed-codimension logarithmic phase transition. The smallest value `ι(Q_6,Q_2)=5` is established 2010 covering-array prior art; candidate novelty lies only in the bridge and structural consequences, pending specialist review.
