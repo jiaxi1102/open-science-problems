@@ -1,0 +1,82 @@
+name: math-0004 exact KG(12,3) decision
+
+on:
+  push:
+    branches:
+      - experiment/math-0004-kneser-r3-exact
+    paths:
+      - tools/search_kneser_r3_exact.py
+      - problems/math-0004-kneser-r3-exact/**
+      - .github/workflows/math-0004-kneser-r3-exact.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate exact DIMACS instance
+        run: |
+          mkdir -p artifacts
+          python tools/search_kneser_r3_exact.py generate \
+            artifacts/kg-12-3.cnf artifacts/instance.json \
+            | tee artifacts/generator-output.json
+          echo 'dc03e235ff1e4105b306a3ebfa1e1bc734287916533ac8eb68e26e6178858004  artifacts/kg-12-3.cnf' \
+            | sha256sum --check
+
+      - name: Download pinned Kissat 4.0.4 binary
+        run: |
+          curl --fail --location --retry 4 \
+            --output artifacts/kissat.zip \
+            https://github.com/arminbiere/kissat/releases/download/rel-4.0.4/kissat-4.0.4-linux-amd64.zip
+          echo '63282e5168ca040a2018edfba0726bf893a7a6bcdb1db87feb67857e2da697a7  artifacts/kissat.zip' \
+            | sha256sum --check
+          unzip -q artifacts/kissat.zip -d artifacts/kissat
+          KISSAT=$(find artifacts/kissat -type f -name 'kissat*' | head -n 1)
+          test -n "$KISSAT"
+          chmod +x "$KISSAT"
+          "$KISSAT" --version | tee artifacts/kissat-version.txt
+          echo "KISSAT=$KISSAT" >> "$GITHUB_ENV"
+
+      - name: Decide the instance
+        shell: bash
+        run: |
+          set +e
+          timeout --signal=TERM 70m "$KISSAT" --witness=true \
+            artifacts/kg-12-3.cnf \
+            > artifacts/solver-output.txt \
+            2> artifacts/solver-stderr.txt
+          status=$?
+          set -e
+          echo "$status" | tee artifacts/solver-exit-status.txt
+          cat artifacts/solver-output.txt
+          cat artifacts/solver-stderr.txt >&2
+          if [[ "$status" != 10 && "$status" != 20 ]]; then
+            echo "Kissat did not return SAT (10) or UNSAT (20)" >&2
+            exit "$status"
+          fi
+
+      - name: Independently verify a satisfying model or record UNSAT boundary
+        run: |
+          python tools/search_kneser_r3_exact.py verify \
+            artifacts/solver-output.txt artifacts/instance.json \
+            | tee artifacts/verification.json
+          sha256sum artifacts/* > artifacts/SHA256SUMS.txt
+
+      - name: Upload exact-search evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: math-0004-kneser-r3-exact
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 90
