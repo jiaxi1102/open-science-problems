@@ -23,6 +23,17 @@ interpretation are therefore prior art. It remains a valid counterexample
 to the 2026 graph-theory question, but it must not be advertised as a newly
 computed covering-array number.
 
+The same tables also give the substantially stronger first Hamming-length
+bound
+
+```text
+21 <= CAN_1(7,9,2) <= 24.
+```
+
+Thus the first member of the proposed Hamming-family theorem is also not a
+new numerical lower bound. The candidate contribution is the uniform proof
+for all binary Hamming lengths and its translation back to graph isolation.
+
 ## Primary sources checked
 
 ### The graph problem
@@ -50,26 +61,30 @@ The paper:
 - defines `CA_r(M;s,n,q)` and `CAN_r(s,n,q)`;
 - proves in Theorem 7.3 that
   `CAN_r(s,s+1,2)=CAN_r(s,s,2)=K_2(s,r)`;
-- records `CAN_1(4,6,2)=5` in its binary table.
+- records `CAN_1(4,6,2)=5` in its binary table;
+- records `21 <= CAN_1(7,9,2) <= 24` in the same table.
 
 ### Generalized surjective codes
 
 J. Quistorff and J.-C. Schlage-Puchta, “On generalized surjective
 codes,” *Studia Scientiarum Mathematicarum Hungarica* 48 (2011).
 
-This is an equivalent coding formulation and supplies monotonicity and
-small-row results relevant to the phase diagram.
+This is an equivalent coding formulation and supplies monotonicity,
+recursive inequalities, and exact small-row regimes relevant to the phase
+diagram.
 
 ## Claims now separated by status
 
 ### Established prior art
 
-1. The radius-covering-array definition.
+1. The radius-covering-array/generalized-surjective-code definition.
 2. `CAN_r(m,m+1,2)=K_2(m,r)`.
 3. `CAN_1(4,6,2)=5`.
-4. Standard existence and parameters of q-ary Hamming perfect codes.
-5. Standard Hamming sphere-packing bounds.
-6. Basic monotonicity of `CAN_r(m,n,q)` in the number of columns.
+4. `21 <= CAN_1(7,9,2) <= 24`.
+5. The exact one-row and two-row regimes for generalized surjective codes.
+6. Standard existence and parameters of q-ary Hamming perfect codes.
+7. Standard Hamming sphere-packing bounds.
+8. Basic monotonicity of `CAN_r(m,n,q)` in the number of columns.
 
 ### Self-contained results proved in this repository
 
@@ -105,18 +120,23 @@ small-row results relevant to the phase diagram.
    ι(Q_n,Q_(n-m))/γ(Q_m) -> infinity.
    ```
 
-These proofs are in `proof/structural-theory.md`.
+These proofs are in `proof/structural-theory.md`. Items 2--5 are presently
+best described as candidate-new formulations or consequences, not confirmed
+priority claims.
 
 ### Novelty status
 
 Targeted searches did not locate a paper stating the exact
 subcube-isolation/radius-covering-array equivalence, the robust-extension
-obstruction above, or its Hamming-family classification consequence.
+obstruction above, or its all-Hamming-length classification consequence.
+The fixed-codimension order of growth is elementary from the coding
+formulation and may well be regarded as folklore; it should not be claimed
+as new without specialist review.
 
-That supports the status
+The appropriate current status is
 
 ```text
-candidate-new structural result; priority not independently confirmed.
+candidate-new structural theorem package; priority not independently confirmed.
 ```
 
 It does **not** justify “first,” “new,” or “groundbreaking” in a public
@@ -146,6 +166,8 @@ Coding terminology:
 - `"robust extension" perfect code Hamming`
 - `"two-coordinate puncturing" perfect code`
 - `"CAN_r(s,s+2,q)" perfect`
+- `"sigma_2" "m+2" "m" radius 1`
+- `"s-surjective" radius 1 Hamming code`
 
 Repositories and scholarly indexes were also searched for exact formulas
 and terminology. No direct match was found as of the date above.
@@ -154,8 +176,8 @@ and terminology. No direct match was found as of the date above.
 
 1. Verify the graph-to-coding dictionary with a hypercube/product-graph
    specialist.
-2. Verify Theorem 3.1 with a coding theorist familiar with covering arrays
-   and perfect codes.
+2. Verify the perfect-code obstruction with a coding theorist familiar with
+   generalized surjective codes.
 3. Ask Brešar and Rall whether the bridge or counterexample was already
    known to them.
 4. Ask at least one radius-covering-array author or specialist whether the
