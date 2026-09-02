@@ -1,0 +1,39 @@
+name: Kneser projection-template frontier
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - tools/kneser_projection_template.py
+      - .github/workflows/kneser-projection-template.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        r: [2, 3, 4, 5, 6]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install SAT solver
+        run: pip install 'python-sat==1.8.dev17'
+      - name: Solve projection-only template at r=${{ matrix.r }}
+        run: |
+          python tools/kneser_projection_template.py \
+            --r ${{ matrix.r }} --include-model \
+            --out experiments/kneser_ramsey/results/projection_template_r${{ matrix.r }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: projection-template-r${{ matrix.r }}
+          path: experiments/kneser_ramsey/results/projection_template_r${{ matrix.r }}.json
+          if-no-files-found: warn
