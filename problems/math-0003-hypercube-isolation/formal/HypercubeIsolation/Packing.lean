@@ -1,4 +1,4 @@
-import HypercubeIsolation.StructuralTheory
+import HypercubeIsolation.ProjectionDistance
 import Mathlib.Algebra.BigOperators.Group.Finset.Basic
 import Mathlib.Data.Finset.Union
 import Mathlib.Tactic
@@ -64,6 +64,26 @@ theorem packing_bound_of_uniform_ball_card {n r V : ℕ}
     _ = 2 ^ n := by
       simp [BitWord]
 
+/--
+Projection separation plus puncturing implies the full Hamming packing bound.
+This is the formal metric core of the perfect-code extension obstruction.
+-/
+theorem packing_bound_of_all_projectionDist_ge
+    {n ell delta r V : ℕ}
+    (hell : ell ≤ n) (hdelta : 0 < delta) (hr : 2 * r < delta + ell)
+    (C : Finset (BitWord n))
+    (hproj : ∀ x ∈ C, ∀ y ∈ C, x ≠ y →
+      ∀ S : Finset (Fin n),
+        S.card = n - ell → delta ≤ restrictedDist S x y)
+    (hcard : ∀ x ∈ C, (hammingBall x r).card = V) :
+    C.card * V ≤ 2 ^ n := by
+  apply packing_bound_of_uniform_ball_card C
+  · intro x hx y hy hxy
+    exact lt_of_lt_of_le hr
+      (code_fullDist_ge_of_all_projectionDist_ge hell hdelta C hproj x hx y hy hxy)
+  · exact hcard
+
 #print axioms packing_bound_of_uniform_ball_card
+#print axioms packing_bound_of_all_projectionDist_ge
 
 end HypercubeIsolation.StructuralTheory
