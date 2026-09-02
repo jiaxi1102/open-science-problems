@@ -1,0 +1,39 @@
+name: Kneser recursive central-cyclic search
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - tools/kneser_central_cyclic.py
+      - .github/workflows/kneser-central-cyclic.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        r: [3, 4, 5]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install SAT solver
+        run: pip install 'python-sat==1.8.dev17'
+      - name: Solve recursive central-cyclic class for r=${{ matrix.r }}
+        run: |
+          python tools/kneser_central_cyclic.py \
+            --r ${{ matrix.r }} \
+            --out experiments/kneser_ramsey/results/central-cyclic-r${{ matrix.r }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: central-cyclic-r${{ matrix.r }}
+          path: experiments/kneser_ramsey/results/central-cyclic-r${{ matrix.r }}.json
+          if-no-files-found: warn
