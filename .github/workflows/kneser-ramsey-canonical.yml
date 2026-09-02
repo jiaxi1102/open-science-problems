@@ -1,0 +1,36 @@
+name: Kneser Ramsey canonical split
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - experiments/kneser_ramsey/solve_triangle_free.py
+      - .github/workflows/kneser-ramsey-canonical.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [matching, path]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install 'python-sat==1.8.dev17'
+      - name: Solve canonical branch
+        run: |
+          python experiments/kneser_ramsey/solve_triangle_free.py \
+            --n 12 --k 3 --seed-type ${{ matrix.seed }} \
+            --out experiments/kneser_ramsey/results/kg_12_3_${{ matrix.seed }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kg-12-3-${{ matrix.seed }}
+          path: experiments/kneser_ramsey/results/kg_12_3_${{ matrix.seed }}.json
