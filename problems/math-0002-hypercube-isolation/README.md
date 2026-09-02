@@ -1,80 +1,156 @@
-# math-0002: Counterexample to the hypercube isolation equality
+# math-0002: Subcube isolation and radius-covering arrays
 
 ## Status matrix
 
 | Dimension | Status |
 |---|---|
-| Problem | `refuted` (proposed counterexample with complete proof) |
-| Formal verification | `theorem-verified` computational certificate; literature-to-model bridge is human-checked |
-| Novelty | `no-prior-proof-found` as of 2026-08-31; not independently confirmed |
-| External review | `none` |
+| Problem | `refuted`: the universal equality fails |
+| Structural result | exact equivalence with binary radius-covering arrays; infinite-family and asymptotic consequences proved |
+| Formal verification | finite `(6,2)` certificate complete; structural Lean layer in progress |
+| Novelty | the value `CAN_1(4,6,2)=5` is 2010 prior art; graph translation and new structural theorems require expert/author confirmation |
+| External review | none yet |
 
 ## Original question
 
-Brešar and Rall asked in Problem 2 of *On the isolation numbers in graph products* (arXiv:2608.25752v1, 26 August 2026) whether
+Brešar and Rall ask in Problem 2 of *On the isolation numbers in graph
+products* (arXiv:2608.25752v1, 26 August 2026) whether
 
 ```text
-ι(Q_n,Q_k)=γ(Q_{n-k})
+ι(Q_n,Q_k)=γ(Q_(n-k))
 ```
 
 for every `0<k<n`.
 
-## Result
+## Exact translation
 
-The equality is false. The first genuinely new square-isolation case gives
+Let `CAN_r(m,n,2)` denote the minimum number of rows in a binary
+radius-covering array of strength `m`, length `n`, and radius `r`. The
+central structural theorem is
 
 ```text
-ι(Q_6,Q_2)=5 > 4 = γ(Q_4).
+ι(Q_n,Q_k) = CAN_1(n-k,n,2).
 ```
 
-A minimum `Q_2`-isolating set is
+More generally, deleting the radius-`r` neighborhood of a set so that no
+codimension-`m` subcube remains has minimum size `CAN_r(m,n,2)`.
+
+The reason is exact: every copy of a hypercube inside a hypercube is a
+coordinate subcube, and the distance from a word to a face equals the
+Hamming distance between its restriction to the fixed coordinates and the
+face pattern.
+
+The complete proof is in
+[`proof/structural-theory.md`](proof/structural-theory.md).
+
+## Main consequences
+
+### Infinite Hamming-family refutation
+
+For every `t>=3`, put `m=2^t-1`. Then
+
+```text
+ι(Q_(m+k),Q_k)=γ(Q_m)  iff  k=1.
+```
+
+The equality for `k=1` is the known parity-extension theorem for binary
+radius-covering arrays. For every `k>=2`, strict inequality follows from a
+new robust-extension obstruction for perfect codes: if every deletion of
+two columns from an optimal-size array had covering radius one, each
+projection would be a perfect Hamming code, forcing full minimum distance
+at least five; the Hamming packing bound then gives a contradiction.
+
+### Fixed-codimension phase transition
+
+For fixed codimension `m`,
+
+```text
+ι(Q_n,Q_(n-m)) =
+  1              if m=1,
+  2              if m=2 or 3,
+  Θ_m(log n)     if m>=4.
+```
+
+Hence, for every fixed `m>=4`,
+
+```text
+ι(Q_n,Q_(n-m)) / γ(Q_m) -> infinity.
+```
+
+This turns the original equality failure into an unbounded asymptotic
+separation.
+
+### Smallest table-based illustration
+
+The 2010 radius-covering-array tables contain
+
+```text
+CAN_1(4,6,2)=5.
+```
+
+The exact translation gives
+
+```text
+ι(Q_6,Q_2)=5 > 4=γ(Q_4).
+```
+
+A minimum set is
 
 ```text
 {000000,000011,000101,111001,111110}.
 ```
 
-The human proof is in [`proof/proof.md`](proof/proof.md).
-
-## Why the finite model is exact
-
-Every copy of `Q_2` in a hypercube is a coordinate square. For each choice of four fixed coordinates in `Q_6`, projecting an isolating set to those coordinates must dominate `Q_4`, and this condition is also sufficient. Thus the finite certificate checks the original graph-theoretic property, not a heuristic relaxation.
+This numerical value is **not new**. The repository retains an independent
+proof, Python enumeration, and Lean certificate because they make the graph
+counterexample directly auditable.
 
 ## Verification
 
-The Lean file [`formal/HypercubeIsolation.lean`](formal/HypercubeIsolation.lean) verifies:
+The current Lean file
+[`formal/HypercubeIsolation.lean`](formal/HypercubeIsolation.lean) verifies:
 
 1. `{0000,0001,1110,1111}` dominates `Q_4`;
 2. no three vertices dominate `Q_4`;
-3. the displayed five vertices isolate every coordinate square of `Q_6`; and
-4. no one of the `635376` four-vertex subsets does.
+3. the displayed five vertices isolate every coordinate square of `Q_6`;
+4. no four vertices do.
 
-The first three facts use kernel reduction. The exhaustive fourth fact uses Lean's `native_decide`, so it carries one explicit generated native-computation axiom whose proposition is auditable. The same enumeration is independently implemented in Python in [`experiments/discover.py`](experiments/discover.py). This formalization is therefore classified as `theorem-verified`, not `end-to-end-verified`: the elementary lemma that every `Q_2` copy is a coordinate square is documented in the human proof rather than formalized in a graph library.
+The first three checks use kernel reduction. The exhaustive fourth check
+uses `native_decide`, and its generated axiom is disclosed in
+[`artifacts/CI.md`](artifacts/CI.md). The same finite claim is independently
+reproduced by [`experiments/discover.py`](experiments/discover.py).
 
-The green workflow run, checked commit, and exact axiom report are recorded in [`artifacts/CI.md`](artifacts/CI.md).
+The next formal layer is being added on the new structural branch:
 
-Build:
+- the coordinate-face/projection distance identity;
+- the equivalence between subcube isolation and radius-covering arrays;
+- the length-nine Hamming packing obstruction underlying the first member
+  `m=7` of the infinite family;
+- kernel-checked arithmetic for the general volume inequality.
+
+## Prior-art correction
+
+The first pass searched only graph-isolation terminology and therefore
+missed the coding-theory name of the same finite object. The corrected
+record is in [`references/NOVELTY.md`](references/NOVELTY.md). In
+particular:
+
+- radius-covering arrays were defined and tabulated by
+  Colbourn--Kéri--Rivas Soriano--Schlage-Puchta in 2010;
+- their table records `CAN_1(4,6,2)=5`;
+- their Theorem 7.3 proves `CAN_r(m,m+1,2)=K_2(m,r)`.
+
+No priority claim should be made for the graph--coding bridge or the new
+theorems until coding theorists, graph theorists, and the authors of the
+2026 problem review them.
+
+## Build
 
 ```bash
 cd formal
 lake build
 ```
 
-Independent search:
+Independent finite search:
 
 ```bash
 python experiments/discover.py
 ```
-
-## Formalization boundary and open risks
-
-- The Lean model encodes vertices as six-bit naturals and coordinate squares through all fifteen four-coordinate projections.
-- `native_decide` trusts Lean's compiler for the exhaustive lower-bound computation; the generated axiom is not hidden, and an independent Python implementation reproduces it.
-- Public prior-art search was negative, but novelty is not author-confirmed or independently reviewed.
-- The result refutes the universal equality only; it does not characterize all pairs `(n,k)`.
-
-## Next gates
-
-1. Independent graph-theory review of the projection reduction and balanced-column proof.
-2. Send the counterexample and certificate to Brešar and Rall for priority/correctness confirmation.
-3. Replace the native exhaustive lower bound with a kernel-only Lean formalization of the short balanced-column proof.
-4. Study the gap `ι(Q_n,Q_k)-γ(Q_{n-k})` and determine the next values.
