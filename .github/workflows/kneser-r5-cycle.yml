@@ -1,0 +1,35 @@
+name: Kneser r5 cyclic family test
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - tools/kneser_cycle_type.py
+      - .github/workflows/kneser-r5-cycle.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install SAT solver
+        run: pip install 'python-sat==1.8.dev17'
+      - name: Solve KG(17,5) with cycle type (10)(7)
+        run: |
+          python tools/kneser_cycle_type.py \
+            --n 17 --k 5 --cycle-type '10,7' \
+            --out experiments/kneser_ramsey/results/kg17-r5-10x7.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kg17-r5-10x7
+          path: experiments/kneser_ramsey/results/kg17-r5-10x7.json
+          if-no-files-found: warn
