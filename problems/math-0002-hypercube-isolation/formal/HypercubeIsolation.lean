@@ -1,4 +1,5 @@
 import Lean
+import HypercubeIsolation.StructuralTheory
 
 set_option maxHeartbeats 0
 set_option maxRecDepth 100000
