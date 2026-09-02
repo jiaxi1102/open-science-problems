@@ -1,0 +1,64 @@
+name: Finite trace-gadget slack scan
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - tools/trace_gadget_sat.py
+      - .github/workflows/trace-gadget-slack.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: m5-t3-d2
+            m: 5
+            threshold: 3
+          - label: m6-t4-d2
+            m: 6
+            threshold: 4
+          - label: m7-t4-d3
+            m: 7
+            threshold: 4
+          - label: m8-t5-d3
+            m: 8
+            threshold: 5
+          - label: m9-t5-d4
+            m: 9
+            threshold: 5
+          - label: m9-t6-d3
+            m: 9
+            threshold: 6
+          - label: m10-t6-d4
+            m: 10
+            threshold: 6
+          - label: m10-t7-d3
+            m: 10
+            threshold: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install SAT solver
+        run: pip install 'python-sat==1.8.dev17'
+      - name: Solve ${{ matrix.label }}
+        run: |
+          python tools/trace_gadget_sat.py \
+            --m ${{ matrix.m }} --threshold ${{ matrix.threshold }} \
+            --max-trace-size ${{ matrix.m }} \
+            --out experiments/kneser_ramsey/results/${{ matrix.label }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.label }}
+          path: experiments/kneser_ramsey/results/${{ matrix.label }}.json
+          if-no-files-found: warn
