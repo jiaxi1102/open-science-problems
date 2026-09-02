@@ -1,13 +1,13 @@
-import Std.Tactic.BVDecide
+import Std.Tactic.NativeDecide
 
 /-!
 # Five-point trace gadget for Kneser Ramsey colorings
 
 A `Trace` is a subset of five distinguished points, encoded as a five-bit
 vector. `red a b` implements the four-rule coloring from the accompanying
-human proof. The main theorem verifies, symbolically for arbitrary traces,
-that three pairwise-disjoint traces covering at least three points cannot
-induce a monochromatic triangle.
+human proof. The main theorem verifies the complete finite statement: three
+pairwise-disjoint traces covering at least three points cannot induce a
+monochromatic triangle.
 -/
 
 namespace KneserFivePoint
@@ -62,23 +62,21 @@ def red (a b : Trace) : Bool :=
       !((other &&& BitVec.rotateRight singleton 1) == 0#5)
 
 /-- The four-rule coloring is symmetric in its two trace arguments. -/
-theorem red_symm (a b : Trace) : red a b = red b a := by
-  simp only [red, isSingleton, isEmpty]
-  bv_decide
+theorem red_symm : ∀ a b : Trace, red a b = red b a := by
+  native_decide
 
 /--
 The finite five-point gadget: pairwise-disjoint traces whose union contains at
 least three points induce both edge colors.
 -/
-theorem fivePointGadget
-    (a b c : Trace)
-    (hab : disjoint a b = true)
-    (hac : disjoint a c = true)
-    (hbc : disjoint b c = true)
-    (hcover : atLeastThree (a ||| b ||| c) = true) :
-    ¬ (red a b = red a c ∧ red a c = red b c) := by
-  simp only [disjoint, atLeastThree, containsMask, red, isSingleton, isEmpty] at *
-  bv_decide (config := { timeout := 120 })
+theorem fivePointGadget :
+    ∀ a b c : Trace,
+      disjoint a b = true →
+      disjoint a c = true →
+      disjoint b c = true →
+      atLeastThree (a ||| b ||| c) = true →
+      ¬ (red a b = red a c ∧ red a c = red b c) := by
+  native_decide
 
 #print axioms KneserFivePoint.red_symm
 #print axioms KneserFivePoint.fivePointGadget
