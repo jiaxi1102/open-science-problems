@@ -6,6 +6,12 @@ blue. Every triangle contributes the two NAE clauses forbidding all-red and
 all-blue. For n = 4k, `matching` and `path` are the two canonical colorings of
 a fixed K4 up to relabeling and global color swap.
 
+For n = 4k, optional K4 closure clauses add logically redundant consequences
+of the four triangle constraints on every partition into four k-sets. `star`
+adds the four star-NAE relations; `prime` additionally adds all twelve
+four-literal prime implicates of the 18-state good-K4 relation. These clauses
+preserve the exact model set while greatly strengthening unit propagation.
+
 This file deliberately has no third-party dependencies. External SAT and
 symmetry tools consume the generated DIMACS file, while this program validates
 any returned model against the original mathematical instance.
@@ -21,6 +27,24 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator, Sequence
+
+
+K4_EDGE_PAIRS = ((0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3))
+K4_STAR_INDEX_TRIPLES = ((0, 1, 2), (0, 3, 4), (1, 3, 5), (2, 4, 5))
+K4_PRIME_FOUR_TEMPLATES = (
+    ((0, 1, 4, 5), (0, 0, 1, 1)),
+    ((0, 1, 4, 5), (0, 1, 0, 1)),
+    ((0, 1, 4, 5), (1, 0, 1, 0)),
+    ((0, 1, 4, 5), (1, 1, 0, 0)),
+    ((0, 2, 3, 5), (0, 0, 1, 1)),
+    ((0, 2, 3, 5), (0, 1, 0, 1)),
+    ((0, 2, 3, 5), (1, 0, 1, 0)),
+    ((0, 2, 3, 5), (1, 1, 0, 0)),
+    ((1, 2, 3, 4), (0, 0, 1, 1)),
+    ((1, 2, 3, 4), (0, 1, 0, 1)),
+    ((1, 2, 3, 4), (1, 0, 1, 0)),
+    ((1, 2, 3, 4), (1, 1, 0, 0)),
+)
 
 
 @dataclass(frozen=True)
@@ -61,10 +85,9 @@ def _canonical_seed_units(
         raise ValueError(f"unknown seed type: {seed}")
 
     units: list[int] = []
-    for a in range(4):
-        for b in range(a + 1, 4):
-            variable = eid(a, b)
-            units.append(variable if (a, b) in red else -variable)
+    for a, b in K4_EDGE_PAIRS:
+        variable = eid(a, b)
+        units.append(variable if (a, b) in red else -variable)
     return tuple(units)
 
 
@@ -115,16 +138,96 @@ def build_instance(n: int, k: int, seed: str | None) -> KneserInstance:
     )
 
 
-def iter_clauses(instance: KneserInstance) -> Iterator[tuple[int, ...]]:
+def _set_partitions_into_four_blocks(n: int, k: int) -> Iterator[tuple[tuple[int, ...], ...]]:
+    if n != 4 * k:
+        raise ValueError("four-block closure requires n = 4k")
+    points = tuple(range(n))
+    for first_tail in itertools.combinations(points[1:], k - 1):
+        first = (0,) + first_tail
+        remaining1 = tuple(x for x in points if x not in first)
+        anchor2 = remaining1[0]
+        for second_tail in itertools.combinations(remaining1[1:], k - 1):
+            second = (anchor2,) + second_tail
+            remaining2 = tuple(x for x in remaining1 if x not in second)
+            anchor3 = remaining2[0]
+            for third_tail in itertools.combinations(remaining2[1:], k - 1):
+                third = (anchor3,) + third_tail
+                fourth = tuple(x for x in remaining2 if x not in third)
+                yield (tuple(first), tuple(second), tuple(third), tuple(fourth))
+
+
+def _k4_edge_variables(instance: KneserInstance) -> Iterator[tuple[int, ...]]:
+    vertex_id = {vertex: idx for idx, vertex in enumerate(instance.vertices)}
+    edge_id = {edge: idx + 1 for idx, edge in enumerate(instance.edges)}
+    for blocks in _set_partitions_into_four_blocks(instance.n, instance.k):
+        block_ids = [vertex_id[block] for block in blocks]
+        variables = []
+        for a, b in K4_EDGE_PAIRS:
+            variables.append(edge_id[tuple(sorted((block_ids[a], block_ids[b])))])
+        yield tuple(variables)
+
+
+def _clause_excluding(variables: Sequence[int], values: Sequence[int]) -> tuple[int, ...]:
+    return tuple(variable if value == 0 else -variable for variable, value in zip(variables, values))
+
+
+def _verify_k4_templates() -> None:
+    edge_id = {edge: index for index, edge in enumerate(K4_EDGE_PAIRS)}
+    triangle_indices = tuple(
+        tuple(edge_id[tuple(sorted(pair))] for pair in itertools.combinations(triangle, 2))
+        for triangle in itertools.combinations(range(4), 3)
+    )
+    good = []
+    for bits in itertools.product((0, 1), repeat=6):
+        if all(len({bits[index] for index in tri}) == 2 for tri in triangle_indices):
+            good.append(bits)
+    assert len(good) == 18
+    for bits in good:
+        for indices in K4_STAR_INDEX_TRIPLES:
+            assert len({bits[index] for index in indices}) == 2
+        for indices, values in K4_PRIME_FOUR_TEMPLATES:
+            assert any(bits[index] != value for index, value in zip(indices, values))
+
+
+def iter_clauses(
+    instance: KneserInstance,
+    closure: str,
+) -> Iterator[tuple[int, ...]]:
     for x, y, z in instance.triangles:
         yield (x, y, z)
         yield (-x, -y, -z)
+
+    if closure != "none":
+        if instance.n != 4 * instance.k:
+            raise ValueError("K4 closure clauses require n = 4k")
+        _verify_k4_templates()
+        for variables in _k4_edge_variables(instance):
+            for indices in K4_STAR_INDEX_TRIPLES:
+                selected = tuple(variables[index] for index in indices)
+                yield selected
+                yield tuple(-variable for variable in selected)
+            if closure == "prime":
+                for indices, values in K4_PRIME_FOUR_TEMPLATES:
+                    selected = tuple(variables[index] for index in indices)
+                    yield _clause_excluding(selected, values)
+
     for unit in instance.seed_units:
         yield (unit,)
 
 
-def write_dimacs(instance: KneserInstance, path: Path) -> dict[str, object]:
-    clauses = tuple(iter_clauses(instance))
+def _factorial(value: int) -> int:
+    result = 1
+    for number in range(2, value + 1):
+        result *= number
+    return result
+
+
+def write_dimacs(
+    instance: KneserInstance,
+    path: Path,
+    closure: str,
+) -> dict[str, object]:
+    clauses = tuple(iter_clauses(instance, closure))
     path.parent.mkdir(parents=True, exist_ok=True)
     digest = hashlib.sha256()
     with path.open("wb") as handle:
@@ -136,6 +239,17 @@ def write_dimacs(instance: KneserInstance, path: Path) -> dict[str, object]:
             handle.write(line)
             digest.update(line)
 
+    four_partitions = 0
+    derived_star = 0
+    derived_prime = 0
+    if closure != "none":
+        four_partitions = _factorial(instance.n) // (
+            _factorial(instance.k) ** 4 * _factorial(4)
+        )
+        derived_star = 8 * four_partitions
+        if closure == "prime":
+            derived_prime = 12 * four_partitions
+
     return {
         "n": instance.n,
         "k": instance.k,
@@ -143,6 +257,10 @@ def write_dimacs(instance: KneserInstance, path: Path) -> dict[str, object]:
         "edge_variables": len(instance.edges),
         "triangles": len(instance.triangles),
         "nae_clauses": 2 * len(instance.triangles),
+        "closure": closure,
+        "four_block_partitions": four_partitions,
+        "derived_star_nae_clauses": derived_star,
+        "derived_prime_four_clauses": derived_prime,
         "seed_units": list(instance.seed_units),
         "total_clauses": len(clauses),
         "dimacs_sha256": digest.hexdigest(),
@@ -220,7 +338,7 @@ def validate_model(
 
 def command_generate(args: argparse.Namespace) -> None:
     instance = build_instance(args.n, args.k, args.seed)
-    metadata = write_dimacs(instance, args.cnf)
+    metadata = write_dimacs(instance, args.cnf, args.closure)
     metadata["seed_type"] = args.seed
     args.metadata.parent.mkdir(parents=True, exist_ok=True)
     args.metadata.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n")
@@ -248,6 +366,7 @@ def main() -> None:
     generate.add_argument("--n", type=int, required=True)
     generate.add_argument("--k", type=int, required=True)
     generate.add_argument("--seed", choices=("matching", "path"))
+    generate.add_argument("--closure", choices=("none", "star", "prime"), default="none")
     generate.add_argument("--cnf", type=Path, required=True)
     generate.add_argument("--metadata", type=Path, required=True)
     generate.set_defaults(func=command_generate)
