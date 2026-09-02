@@ -23,11 +23,15 @@ jobs:
         with:
           python-version: '3.12'
       - name: Verify all 55 extension instances and explicit obstruction cores
+        shell: bash
         run: |
+          set -euo pipefail
           python tools/verify_kneser_r3_one_point_saturation.py \
             | tee one-point-saturation.json
+          test -s one-point-saturation.json
       - uses: actions/upload-artifact@v4
         with:
           name: kg11-r3-one-point-saturation
           path: one-point-saturation.json
+          if-no-files-found: error
           retention-days: 30
