@@ -9,7 +9,7 @@ The repository is deliberately conservative about claims. A computational result
 | ID | Problem | Field | Status | Formal verification | External validation |
 |---|---|---|---|---|---|
 | `math-0001` | Hedgehog plucking-polynomial unimodality (Conjecture 4.1) | algebraic combinatorics / knot theory | `proposed-proof` | Lean 4 proof of stronger coefficient theorem | pending |
-| `math-0002` | Hypercube `Q_k`-isolation equality (Problem 2) | domination theory / hypercubes | `refuted` (proposed counterexample) | Lean 4 finite certificate + independent exhaustive search | pending |
+| `math-0002` | Hypercube subcube-isolation equality (Problem 2) | domination theory / coding theory | `refuted`; structural classification proposed | Lean coordinate-copy theorem, graph--covering-array dictionary, obstruction arithmetic, and finite certificate | pending |
 
 See [`PROBLEMS.md`](PROBLEMS.md) for the registry and [`CONTRIBUTING.md`](CONTRIBUTING.md) for the required structure and claim standards.
 
@@ -57,4 +57,4 @@ templates/
 
 `math-0001` contains a proposed proof of hedgehog plucking-polynomial unimodality for delays in `{1,2}`. The formal component proves a stronger zero-one coefficient theorem in Lean; the bridge to the original plucking-polynomial conjecture currently relies on the published factorization (Proposition 2.5) and is documented as such.
 
-`math-0002` gives a proposed new counterexample to the universal hypercube isolation equality: `ι(Q_6,Q_2)=5>4=γ(Q_4)`. It includes a short human proof, a Lean 4 finite certificate, an independent Python enumeration, a logged prior-art search, and an explicit account of the `native_decide` trust boundary. Priority and correctness have not yet been externally confirmed.
+`math-0002` identifies radius-`r` subcube isolation in a binary hypercube exactly with radius-covering arrays. It derives an infinite classification at every binary Hamming codimension `m=2^t-1`: the Brešar--Rall equality holds exactly for one extra dimension and fails for every `k>=2`. It also proves a fixed-codimension phase transition from constant isolation numbers at codimension at most three to `Θ(log n)` growth from codimension four onward. Lean verifies that every abstract cube copy is coordinate, the exact graph--coding dictionary, and the arithmetic core of the Hamming-family obstruction. The illustrative value `ι(Q_6,Q_2)=5` is 2010 covering-array prior art, not a new numerical result.
