@@ -1,0 +1,146 @@
+name: Exact KG(12,3) via the local-star dichotomy
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - tools/kneser_exact_cnf.py
+      - tools/kneser_r3_local_cases.py
+      - .github/workflows/kneser-r3-local-cases.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        canonical_case: [point, barrier]
+        preprocessing: [direct, satsuma-fix]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate one complete canonical case
+        run: |
+          mkdir -p out
+          python -m py_compile \
+            tools/kneser_exact_cnf.py \
+            tools/kneser_r3_local_cases.py
+          python tools/kneser_r3_local_cases.py generate \
+            --case '${{ matrix.canonical_case }}' \
+            --closure prime \
+            --cnf out/original.cnf \
+            --metadata out/metadata.json
+
+      - name: Build pinned Satsuma and Kissat
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          if [[ '${{ matrix.preprocessing }}' == 'satsuma-fix' ]]; then
+            git clone --quiet --recurse-submodules https://github.com/markusa4/satsuma.git /tmp/satsuma
+            git -C /tmp/satsuma checkout --quiet c6ad1b59f29fa32dae587ef369135735f40d498a
+            git -C /tmp/satsuma submodule update --init --recursive
+            cmake -S /tmp/satsuma -B /tmp/satsuma/build -DCMAKE_BUILD_TYPE=Release
+            cmake --build /tmp/satsuma/build --target satsuma --parallel 2
+            test -x /tmp/satsuma/build/satsuma
+          fi
+
+          git clone --quiet https://github.com/arminbiere/kissat.git /tmp/kissat
+          git -C /tmp/kissat checkout --quiet 8af8e56f174b778aef3aa45af9f739b2a5f492c2
+          cd /tmp/kissat
+          ./configure
+          make -C build -j2
+          test -x /tmp/kissat/build/kissat
+          /tmp/kissat/build/kissat --version > "$GITHUB_WORKSPACE/out/kissat-version.txt"
+
+      - name: Apply optional structural symmetry breaking
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if [[ '${{ matrix.preprocessing }}' == 'satsuma-fix' ]]; then
+            /tmp/satsuma/build/satsuma fix --add-reduced-as-unit \
+              out/original.cnf \
+              > out/solve.cnf 2> out/satsuma.log
+          else
+            cp out/original.cnf out/solve.cnf
+            echo 'direct: no external symmetry preprocessing' > out/satsuma.log
+          fi
+          grep '^p cnf' out/original.cnf out/solve.cnf | tee out/cnf-sizes.txt
+
+      - name: Decide the canonical case with Kissat
+        shell: bash
+        run: |
+          set +e
+          timeout --signal=TERM --kill-after=30s 30m \
+            /tmp/kissat/build/kissat out/solve.cnf \
+            > out/solver.log 2>&1
+          rc=$?
+          set -e
+
+          if grep -q 's SATISFIABLE' out/solver.log; then
+            status=SATISFIABLE
+            python tools/kneser_r3_local_cases.py check \
+              --case '${{ matrix.canonical_case }}' \
+              --model out/solver.log \
+              --out out/validated-witness.json
+          elif grep -q 's UNSATISFIABLE' out/solver.log; then
+            status=UNSATISFIABLE
+          elif [[ "$rc" -eq 124 || "$rc" -eq 137 || "$rc" -eq 143 ]]; then
+            status=TIMEOUT
+          else
+            status=ERROR
+          fi
+
+          python - "$status" "$rc" '${{ matrix.canonical_case }}' '${{ matrix.preprocessing }}' <<'PY'
+          import json, pathlib, sys
+          status, rc, canonical_case, preprocessing = sys.argv[1:]
+          metadata = json.loads(pathlib.Path('out/metadata.json').read_text())
+          result = {
+              **metadata,
+              'canonical_case': canonical_case,
+              'preprocessing': preprocessing,
+              'solver': 'kissat',
+              'solver_status': status,
+              'solver_exit_code': int(rc),
+              'satsuma_commit': (
+                  'c6ad1b59f29fa32dae587ef369135735f40d498a'
+                  if preprocessing == 'satsuma-fix'
+                  else None
+              ),
+              'kissat_commit': '8af8e56f174b778aef3aa45af9f739b2a5f492c2',
+          }
+          pathlib.Path('out/result.json').write_text(
+              json.dumps(result, indent=2, sort_keys=True) + '\n'
+          )
+          print(json.dumps(result, indent=2, sort_keys=True))
+          PY
+
+          if [[ "$status" == 'ERROR' ]]; then
+            tail -200 out/solver.log
+            exit 1
+          fi
+
+      - name: Upload canonical-case evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kg12-r3-${{ matrix.canonical_case }}-${{ matrix.preprocessing }}
+          path: |
+            out/metadata.json
+            out/result.json
+            out/validated-witness.json
+            out/cnf-sizes.txt
+            out/satsuma.log
+            out/solver.log
+            out/kissat-version.txt
+          if-no-files-found: warn
+          retention-days: 30
