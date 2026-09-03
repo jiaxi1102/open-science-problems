@@ -1,0 +1,171 @@
+name: snapshot math-0003 exact-r3 status
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - .github/workflows/snapshot-math-0003-status.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/math-0003-exact-r3
+          fetch-depth: 0
+
+      - name: Build auditable snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo='jiaxi1102/open-science-problems'
+          branch='research/math-0003-exact-r3'
+          out='problems/math-0003-kneser-ramsey-lower-bound/experiments/kg12-r3/CURRENT_STATUS.md'
+          mkdir -p "$(dirname "$out")" /tmp/math0003-artifacts
+
+          gh api --paginate \
+            "/repos/$repo/actions/runs?branch=$branch&per_page=100" \
+            > /tmp/runs-pages.jsonl
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          runs=[]
+          for line in Path('/tmp/runs-pages.jsonl').read_text().splitlines():
+              page=json.loads(line)
+              runs.extend(page.get('workflow_runs', []))
+          latest={}
+          for run in runs:
+              name=run['name']
+              if 'math-0003' not in name:
+                  continue
+              current=latest.get(name)
+              if current is None or run['created_at'] > current['created_at']:
+                  latest[name]=run
+          rows=sorted(latest.values(), key=lambda r:r['name'])
+          payload=[]
+          for r in rows:
+              payload.append({
+                  'name':r['name'], 'id':r['id'], 'status':r['status'],
+                  'conclusion':r.get('conclusion'), 'created_at':r['created_at'],
+                  'updated_at':r['updated_at'], 'url':r['html_url'],
+                  'head_sha':r['head_sha'],
+              })
+          Path('/tmp/latest-runs.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
+          PY
+
+          {
+            echo '# Current exact-`r=3` research status'
+            echo
+            echo '> Generated from GitHub Actions metadata and retained artifacts. A restricted-ansatz UNSAT result is never promoted to an unrestricted Ramsey conclusion.'
+            echo
+            echo '## Latest workflow runs'
+            echo
+            echo '| Workflow | Run | State | Conclusion | Head | Updated |'
+            echo '|---|---:|---|---|---|---|'
+            python - <<'PY'
+          import json
+          for r in json.load(open('/tmp/latest-runs.json')):
+              conclusion=r['conclusion'] or '—'
+              print(f"| {r['name']} | [{r['id']}]({r['url']}) | {r['status']} | {conclusion} | `{r['head_sha'][:12]}` | {r['updated_at']} |")
+          PY
+            echo
+            echo '## Retained certificate summaries'
+            echo
+          } > "$out"
+
+          python - <<'PY' > /tmp/latest-run-ids.txt
+          import json
+          for r in json.load(open('/tmp/latest-runs.json')):
+              print(r['id'])
+          PY
+
+          while IFS= read -r run_id; do
+            gh api "/repos/$repo/actions/runs/$run_id/artifacts?per_page=100" > "/tmp/artifacts-$run_id.json"
+            python - "$run_id" <<'PY' > "/tmp/artifact-lines-$run_id.tsv"
+          import json,sys
+          run_id=sys.argv[1]
+          data=json.load(open(f'/tmp/artifacts-{run_id}.json'))
+          for a in data.get('artifacts',[]):
+              if a.get('expired'):
+                  continue
+              print('\t'.join([str(a['id']),a['name'],str(a['size_in_bytes'])]))
+          PY
+            while IFS=$'\t' read -r artifact_id artifact_name artifact_size; do
+              [ -n "$artifact_id" ] || continue
+              echo "### \`$artifact_name\` (artifact \`$artifact_id\`, $artifact_size bytes)" >> "$out"
+              echo >> "$out"
+              if [ "$artifact_size" -le 100000000 ]; then
+                zip="/tmp/math0003-artifacts/$artifact_id.zip"
+                curl --fail --silent --show-error --location \
+                  -H "Authorization: Bearer $GH_TOKEN" \
+                  -H 'X-GitHub-Api-Version: 2022-11-28' \
+                  "https://api.github.com/repos/$repo/actions/artifacts/$artifact_id/zip" \
+                  --output "$zip"
+                echo "- ZIP SHA-256: \`$(sha256sum "$zip" | cut -d' ' -f1)\`" >> "$out"
+                status_member="$(unzip -Z1 "$zip" | grep -E '(^|/)status\.txt$' | head -n 1 || true)"
+                exit_member="$(unzip -Z1 "$zip" | grep -E '(^|/)kissat\.exit-code\.txt$|(^|/)exit-code\.txt$' | head -n 1 || true)"
+                cert_member="$(unzip -Z1 "$zip" | grep -E '(^|/)(sat-certificate|result)\.json$' | head -n 1 || true)"
+                if [ -n "$status_member" ]; then
+                  status_value="$(unzip -p "$zip" "$status_member" | tr -d '\r\n')"
+                  echo "- Status: \`$status_value\`" >> "$out"
+                fi
+                if [ -n "$exit_member" ]; then
+                  exit_value="$(unzip -p "$zip" "$exit_member" | tr -d '\r\n')"
+                  echo "- Solver/process exit code: \`$exit_value\`" >> "$out"
+                fi
+                if [ -n "$cert_member" ]; then
+                  unzip -p "$zip" "$cert_member" > /tmp/certificate.json
+                  python - "$out" <<'PY'
+          import json,sys
+          out=sys.argv[1]
+          try:
+              x=json.load(open('/tmp/certificate.json'))
+          except Exception:
+              raise SystemExit(0)
+          keys=['result','solver_status','case','branch','bound','full_edges_checked','edges_checked','full_triangles_checked','triangles_checked','monochromatic_triangles','monochromatic_full_triangles','edge_model_hex_sha256','model_hex_sha256','full_model_hex_sha256']
+          with open(out,'a') as f:
+              for key in keys:
+                  if key in x:
+                      f.write(f"- `{key}`: `{x[key]}`\n")
+          PY
+                fi
+                echo >> "$out"
+              else
+                echo '- Artifact exceeds the 100 MB snapshot-download cap; inspect the linked workflow before drawing a conclusion.' >> "$out"
+                echo >> "$out"
+              fi
+            done < "/tmp/artifact-lines-$run_id.tsv"
+          done < /tmp/latest-run-ids.txt
+
+          {
+            echo '## Interpretation gates'
+            echo
+            echo '- **Exact 13:** requires a retained SAT model independently checked on all 9,240 edges and 61,600 triangles.'
+            echo '- **Exact 12:** requires either one unrestricted checked UNSAT certificate or checked UNSAT certificates for both exhaustive canonical-`K4` branches.'
+            echo '- Trace, orbit, bounded-weight, or heuristic failures are ansatz-specific and nondecisive.'
+          } >> "$out"
+
+      - name: Commit snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add problems/math-0003-kneser-ramsey-lower-bound/experiments/kg12-r3/CURRENT_STATUS.md
+          if git diff --cached --quiet; then
+            echo 'Snapshot unchanged'
+          else
+            git commit -m 'Record current exact-r3 certificate status'
+            git push origin HEAD:research/math-0003-exact-r3
+          fi
