@@ -1,0 +1,64 @@
+name: math-0003 sharp nine-point link theorem
+
+on:
+  push:
+    branches:
+      - math-0003-local-link-k5
+    paths:
+      - tools/verify_kneser_nine_point_link_k5.py
+      - problems/math-0003-kneser-ramsey-lower-bound/proof/nine-point-link-k5.md
+      - .github/workflows/math-0003-nine-point-link-k5.yml
+  pull_request:
+    paths:
+      - tools/verify_kneser_nine_point_link_k5.py
+      - problems/math-0003-kneser-ramsey-lower-bound/proof/nine-point-link-k5.md
+      - .github/workflows/math-0003-nine-point-link-k5.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Reject unfinished or external-solver shortcuts
+        shell: bash
+        run: |
+          if grep -nE '\b(sorry|admit)\b' tools/verify_kneser_nine_point_link_k5.py; then
+            echo 'Unfinished marker found'
+            exit 1
+          fi
+          if grep -nE '(^|[[:space:]])(pysat|scipy|numpy|z3|ortools)([[:space:].]|$)' tools/verify_kneser_nine_point_link_k5.py; then
+            echo 'Third-party decision dependency found'
+            exit 1
+          fi
+          python -m py_compile tools/verify_kneser_nine_point_link_k5.py
+
+      - name: Generate and verify deterministic proof DAG
+        run: |
+          mkdir -p experiments/kneser_ramsey/results/nine-point-link
+          python tools/verify_kneser_nine_point_link_k5.py \
+            --write-certificate experiments/kneser_ramsey/results/nine-point-link/refutation.json.gz.b64 \
+            --out experiments/kneser_ramsey/results/nine-point-link/generated.json
+
+      - name: Recheck the serialized certificate independently
+        run: |
+          python tools/verify_kneser_nine_point_link_k5.py \
+            --certificate experiments/kneser_ramsey/results/nine-point-link/refutation.json.gz.b64 \
+            --out experiments/kneser_ramsey/results/nine-point-link/rechecked.json
+          cmp \
+            experiments/kneser_ramsey/results/nine-point-link/generated.json \
+            experiments/kneser_ramsey/results/nine-point-link/rechecked.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: math-0003-nine-point-link-k5
+          path: experiments/kneser_ramsey/results/nine-point-link/
+          if-no-files-found: error
