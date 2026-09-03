@@ -213,7 +213,7 @@ theorem toFun_eq_coordinateMap (x : CubeVertex k) :
             simp [Finset.mem_symmDiff, ha_image]
           · simp [Finset.mem_symmDiff, hja]
         _ = F.coordinateMap (insert a x) := by
-          simp [coordinateMap, Finset.map_insert]
+          simp [coordinateMap, Finset.map_insert, ha]
 
 /--
 Coordinate-copy theorem: the image of every abstract graph copy of `Q_k` in
