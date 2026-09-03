@@ -1,0 +1,59 @@
+name: report math-0003 research status
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - .github/workflows/report-math-0003-status.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build consolidated workflow report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo='jiaxi1102/open-science-problems'
+          branch='research/math-0003-exact-r3'
+          gh api --paginate \
+            "/repos/$repo/actions/runs?branch=$branch&per_page=100" \
+            --jq '.workflow_runs[] | [.name, (.id|tostring), .status, (.conclusion // ""), .updated_at, .html_url] | @tsv' \
+            > all-runs.tsv
+
+          python - <<'PY'
+          from pathlib import Path
+          rows=[]
+          seen=set()
+          for line in Path('all-runs.tsv').read_text().splitlines():
+              name, run_id, status, conclusion, updated, url = line.split('\t')
+              if 'math-0003' not in name or name in seen:
+                  continue
+              seen.add(name)
+              rows.append((name, run_id, status, conclusion or '—', updated, url))
+          rows.sort(key=lambda row: row[4], reverse=True)
+          with open('status-table.md','w') as out:
+              out.write('| Workflow | Run | Status | Conclusion | Updated |\n')
+              out.write('|---|---:|---|---|---|\n')
+              for name, run_id, status, conclusion, updated, url in rows:
+                  out.write(f'| {name} | [{run_id}]({url}) | {status} | {conclusion} | {updated} |\n')
+          PY
+
+          cat > comment.md <<'EOF'
+          <!-- math-0003-consolidated-status -->
+          ## Consolidated exact-`r=3` research status
+
+          This table reports execution state only. A green restricted-ansatz workflow is not an exact Ramsey theorem unless its artifact contains a fully rechecked SAT model. The only decisive negative paths are the unrestricted DRAT proof or both exhaustive canonical-`K4` branch DRAT proofs.
+
+          EOF
+          cat status-table.md >> comment.md
+          gh pr comment 11 --repo "$repo" --body-file comment.md
