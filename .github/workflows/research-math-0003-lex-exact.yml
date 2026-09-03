@@ -1,0 +1,121 @@
+name: research math-0003 lex exact
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - tools/kg12_r3_lex_sat.py
+      - tools/kg12_r3_split_sat.py
+      - .github/workflows/research-math-0003-lex-exact.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve:
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: [matching, path]
+        prefix: [1200, 2400]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate exact lex-leader branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH='${{ matrix.branch }}'
+          PREFIX='${{ matrix.prefix }}'
+          DIR="lex-$BRANCH-$PREFIX"
+          mkdir -p "$DIR"
+          python tools/kg12_r3_lex_sat.py --branch "$BRANCH" --prefix-length "$PREFIX" \
+            --cnf "$DIR/instance.cnf" \
+            --metadata "$DIR/instance-metadata.json"
+
+      - name: Install pinned Kissat and DRAT checker
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH='${{ matrix.branch }}'
+          PREFIX='${{ matrix.prefix }}'
+          DIR="lex-$BRANCH-$PREFIX"
+          curl --fail --location --retry 3 \
+            https://github.com/arminbiere/kissat/releases/download/rel-4.0.4/kissat-4.0.4-linux-amd64.zip \
+            --output kissat.zip
+          echo '63282e5168ca040a2018edfba0726bf893a7a6bcdb1db87feb67857e2da697a7  kissat.zip' \
+            | sha256sum --check --strict
+          unzip -q kissat.zip -d kissat-dist
+          KISSAT=''
+          while IFS= read -r candidate; do
+            if file "$candidate" | grep -q 'ELF'; then
+              KISSAT="$candidate"
+              break
+            fi
+          done < <(find kissat-dist -type f -print | sort)
+          test -n "$KISSAT"
+          chmod +x "$KISSAT"
+          "$KISSAT" --version | tee "$DIR/kissat-version.txt"
+          echo "KISSAT=$GITHUB_WORKSPACE/$KISSAT" >> "$GITHUB_ENV"
+          curl --fail --location --retry 3 \
+            https://raw.githubusercontent.com/marijnheule/drat-trim/2e3b2dc0ecf938addbd779d42877b6ed69d9a985/drat-trim.c \
+            --output "$DIR/drat-trim.c"
+          gcc -O3 -DNDEBUG "$DIR/drat-trim.c" -o "$DIR/drat-trim"
+
+      - name: Solve and certify exact symmetry-reduced branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH='${{ matrix.branch }}'
+          PREFIX='${{ matrix.prefix }}'
+          DIR="lex-$BRANCH-$PREFIX"
+          set +e
+          "$KISSAT" --time=2100 "$DIR/instance.cnf" "$DIR/proof.drat" \
+            > "$DIR/kissat.out" 2> "$DIR/kissat.err"
+          code=$?
+          set -e
+          printf '%s\n' "$code" > "$DIR/kissat.exit-code.txt"
+          if [ "$code" -eq 10 ]; then
+            python tools/kg12_r3_split_sat.py --branch "$BRANCH" verify-model \
+              --solver-output "$DIR/kissat.out" \
+              --certificate "$DIR/sat-certificate.json"
+            printf 'SAT_FULL_KG12_MODEL_VERIFIED\n' > "$DIR/status.txt"
+          elif [ "$code" -eq 20 ]; then
+            "$DIR/drat-trim" "$DIR/instance.cnf" "$DIR/proof.drat" \
+              > "$DIR/drat-trim.out" 2> "$DIR/drat-trim.err"
+            grep -q 'VERIFIED' "$DIR/drat-trim.out"
+            printf 'UNSAT_EXACT_LEX_BRANCH_DRAT_VERIFIED\n' > "$DIR/status.txt"
+          else
+            printf 'INCONCLUSIVE_EXIT_%s\n' "$code" > "$DIR/status.txt"
+            exit 1
+          fi
+          cat "$DIR/status.txt"
+
+      - name: Record checksums and compress proof
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH='${{ matrix.branch }}'
+          PREFIX='${{ matrix.prefix }}'
+          DIR="lex-$BRANCH-$PREFIX"
+          find "$DIR" -maxdepth 1 -type f ! -name SHA256SUMS.txt \
+            -print0 | sort -z | xargs -0 sha256sum > "$DIR/SHA256SUMS.txt"
+          if [ -s "$DIR/proof.drat" ]; then
+            gzip -9 "$DIR/proof.drat"
+          fi
+
+      - name: Upload exact lex certificate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: math-0003-lex-${{ matrix.branch }}-${{ matrix.prefix }}
+          path: lex-${{ matrix.branch }}-${{ matrix.prefix }}/
+          if-no-files-found: error
+          retention-days: 90
