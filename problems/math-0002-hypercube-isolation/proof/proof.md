@@ -1,4 +1,11 @@
-# Proof that `ι(Q₆,Q₂)=5>4=γ(Q₄)`
+# Independent proof of `ι(Q₆,Q₂)=5>4=γ(Q₄)`
+
+> **Prior-art status.** The numerical equality `CAN_1(4,6,2)=5` appears in
+> the 2010 radius-covering-array tables. By the exact graph--coding dictionary
+> proved in [`structural-theory.md`](structural-theory.md), this already implies
+> `ι(Q₆,Q₂)=5`. The argument below is retained as an independent, elementary
+> graph-language proof and as the human counterpart of the Lean/Python
+> certificate; it is not claimed as a new numerical result.
 
 ## Reduction to projected dominating codes
 
@@ -73,4 +80,4 @@ Reading the six columns across these five rows gives three equal columns and thr
 
 A direct radius-one check shows that each set dominates all sixteen vertices of `Q_4`. The Lean theorem `isolatingWitnessQ6_valid` checks all fifteen coordinate projections and all sixteen fixed patterns. Therefore `ι(Q_6,Q_2)≤5`.
 
-Combining the two bounds gives `ι(Q_6,Q_2)=5`, while `γ(Q_4)=4`. This refutes the proposed universal equality.
+Combining the two bounds gives `ι(Q_6,Q_2)=5`, while `γ(Q_4)=4`. This independently illustrates the failure of the proposed universal equality.
