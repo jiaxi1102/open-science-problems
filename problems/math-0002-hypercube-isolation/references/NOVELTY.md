@@ -1,185 +1,133 @@
-# Novelty and prior-art record
+# Novelty and prior-art check
 
-**Corrected search date:** 2026-09-02 (America/New_York)
+**Latest search date:** 2026-09-02 (America/New_York)
 
-## Executive correction
+## Claims checked
 
-The first search pass used graph-isolation terminology only. That was not
-enough. Under the exact coding-theory translation,
+The investigation now separates four statements that initially appeared to
+be one claim.
 
-```text
-ι(Q_n,Q_k) = CAN_1(n-k,n,2),
-```
+1. The numerical value `ι(Q_6,Q_2)=5`.
+2. The exact identity between hypercube subcube-isolation numbers and binary
+   radius-covering-array numbers.
+3. The perfect-code robust-extension obstruction and its infinite Hamming
+   family.
+4. The fixed-codimension constant/logarithmic phase transition.
 
-the finite value originally presented as a candidate discovery is
+## Corrected status of the small value
 
-```text
-ι(Q_6,Q_2) = CAN_1(4,6,2) = 5.
-```
-
-Colbourn, Kéri, Rivas Soriano, and Schlage-Puchta tabulated
-`CAN_1(4,6,2)=5` in 2010. The numerical value and its radius-covering-array
-interpretation are therefore prior art. It remains a valid counterexample
-to the 2026 graph-theory question, but it must not be advertised as a newly
-computed covering-array number.
-
-The same tables also give the substantially stronger first Hamming-length
-bound
+The finite parameter is not new. Colbourn, Kéri, Rivas Soriano, and
+Schlage-Puchta, *Covering and radius-covering arrays: Constructions and
+classification* (2010), tabulate
 
 ```text
-21 <= CAN_1(7,9,2) <= 24.
+CAN_1(4,6,2)=5.
 ```
 
-Thus the first member of the proposed Hamming-family theorem is also not a
-new numerical lower bound. The candidate contribution is the uniform proof
-for all binary Hamming lengths and its translation back to graph isolation.
-
-## Primary sources checked
-
-### The graph problem
-
-Boštjan Brešar and Douglas F. Rall, *On the isolation numbers in graph
-products*, arXiv:2608.25752v1, submitted 26 August 2026.
-
-Problem 2 asks whether
+The exact graph--coding identity therefore turns this old table entry into
 
 ```text
-ι(Q_n,Q_k)=γ(Q_(n-k))
+ι(Q_6,Q_2)=5.
 ```
 
-for every `0<k<n`.
+The initial graph-only search missed the established coding-theory term.
+The repository preserves the balanced-column proof, Python enumeration, and
+Lean certificate as independent verification, but makes no novelty claim
+for the value.
 
-### Radius-covering arrays
-
-C. J. Colbourn, G. Kéri, P. P. Rivas Soriano, and
-J.-C. Schlage-Puchta, “Covering and radius-covering arrays:
-Constructions and classification,” *Discrete Applied Mathematics* 158
-(2010), 1158--1180, DOI 10.1016/j.dam.2010.03.008.
-
-The paper:
-
-- defines `CA_r(M;s,n,q)` and `CAN_r(s,n,q)`;
-- proves in Theorem 7.3 that
-  `CAN_r(s,s+1,2)=CAN_r(s,s,2)=K_2(s,r)`;
-- records `CAN_1(4,6,2)=5` in its binary table;
-- records `21 <= CAN_1(7,9,2) <= 24` in the same table.
-
-### Generalized surjective codes
-
-J. Quistorff and J.-C. Schlage-Puchta, “On generalized surjective
-codes,” *Studia Scientiarum Mathematicarum Hungarica* 48 (2011).
-
-This is an equivalent coding formulation and supplies monotonicity,
-recursive inequalities, and exact small-row regimes relevant to the phase
-diagram.
-
-## Claims now separated by status
-
-### Established prior art
-
-1. The radius-covering-array/generalized-surjective-code definition.
-2. `CAN_r(m,m+1,2)=K_2(m,r)`.
-3. `CAN_1(4,6,2)=5`.
-4. `21 <= CAN_1(7,9,2) <= 24`.
-5. The exact one-row and two-row regimes for generalized surjective codes.
-6. Standard existence and parameters of q-ary Hamming perfect codes.
-7. Standard Hamming sphere-packing bounds.
-8. Basic monotonicity of `CAN_r(m,n,q)` in the number of columns.
-
-### Self-contained results proved in this repository
-
-1. **Exact graph--coding equivalence**
-   ```text
-   I_r(n,m)=CAN_r(m,n,2),
-   ```
-   where `I_r(n,m)` is radius-`r` isolation of codimension-`m` subcubes.
-
-2. **Perfect-code robust-extension obstruction**
-   ```text
-   V_q(m+ell,r+floor(ell/2)) > q^ell V_q(m,r)
-   ```
-   prevents a perfect optimal length-`m` covering code from extending to a
-   radius-covering array with `ell` additional columns and the same number
-   of rows.
-
-3. **Infinite Hamming-family classification**
-   for `m=2^t-1`, `t>=3`,
-   ```text
-   ι(Q_(m+k),Q_k)=γ(Q_m) iff k=1.
-   ```
-
-4. **Fixed-codimension phase transition**
-   ```text
-   ι(Q_n,Q_(n-m)) = 1, 2, or Θ_m(log n)
-   ```
-   according as `m=1`, `m in {2,3}`, or `m>=4`.
-
-5. **Unbounded separation**
-   for each fixed `m>=4`,
-   ```text
-   ι(Q_n,Q_(n-m))/γ(Q_m) -> infinity.
-   ```
-
-These proofs are in `proof/structural-theory.md`. Items 2--5 are presently
-best described as candidate-new formulations or consequences, not confirmed
-priority claims.
-
-### Novelty status
-
-Targeted searches did not locate a paper stating the exact
-subcube-isolation/radius-covering-array equivalence, the robust-extension
-obstruction above, or its all-Hamming-length classification consequence.
-The fixed-codimension order of growth is elementary from the coding
-formulation and may well be regarded as folklore; it should not be claimed
-as new without specialist review.
-
-The appropriate current status is
+The same source proves in Theorem 7.3 that
 
 ```text
-candidate-new structural theorem package; priority not independently confirmed.
+CAN_r(m,m+1,2)=K_2(m,r),
 ```
 
-It does **not** justify “first,” “new,” or “groundbreaking” in a public
-claim. Those words require review by specialists and, ideally, written
-confirmation from the authors of the 2026 problem and researchers in
-radius-covering arrays.
+which supplies the positive one-extra-column case used in the structural
+classification.
 
-## Search queries
+## Candidate contribution
 
-Graph terminology:
+The current candidate-new contribution is the package consisting of:
 
-- `"iota(Q_n,Q_k)" radius covering array`
-- `"subcube isolation" hypercube covering array`
-- `"Q_k-isolation" hypercube code`
-- `"hypercube isolation" "covering array"`
-- `"On the isolation numbers in graph products" counterexample`
-- `"Brešar" "Rall" "Problem 2" hypercube`
+```text
+I_r(n,m)=CAN_r(m,n,2),
+```
 
-Coding terminology:
+where `I_r(n,m)` is radius-`r` isolation of codimension-`m` subcubes;
 
-- `"radius-covering array" hypercube subcube`
-- `"generalized surjective code" subcube`
-- `"CAN_1" "m+2" perfect code`
-- `"radius-covering array" perfect code extension`
-- `"all puncturings" perfect code`
-- `"every puncturing" Hamming code`
-- `"robust extension" perfect code Hamming`
-- `"two-coordinate puncturing" perfect code`
-- `"CAN_r(s,s+2,q)" perfect`
-- `"sigma_2" "m+2" "m" radius 1`
-- `"s-surjective" radius 1 Hamming code`
+an obstruction saying that a perfect radius-`r` code of length `m` cannot
+extend to an `m+ell` column radius-covering array with the same number of
+rows whenever
 
-Repositories and scholarly indexes were also searched for exact formulas
-and terminology. No direct match was found as of the date above.
+```text
+V_q(m+ell,r+floor(ell/2)) > q^ell V_q(m,r);
+```
 
-## Required external gates
+and, for binary Hamming lengths `m=2^t-1`, `t>=3`, the classification
 
-1. Verify the graph-to-coding dictionary with a hypercube/product-graph
-   specialist.
-2. Verify the perfect-code obstruction with a coding theorist familiar with
-   generalized surjective codes.
-3. Ask Brešar and Rall whether the bridge or counterexample was already
-   known to them.
-4. Ask at least one radius-covering-array author or specialist whether the
-   robust-extension obstruction is implicit in existing literature.
-5. Complete the structural Lean formalization and independent proof audit.
+```text
+ι(Q_(m+k),Q_k)=γ(Q_m)  iff  k=1.
+```
+
+The fixed-codimension consequence is
+
+```text
+ι(Q_n,Q_(n-m)) = 1            for m=1,
+                 2            for m=2,3,
+                 Θ_m(log n)   for m>=4.
+```
+
+## Search scope
+
+Searches covered graph-isolation terminology, covering-array terminology,
+generalized surjective codes, perfect-code extensions, puncturing, robust
+covering codes, and exact parameter notation. Representative queries
+included:
+
+- `"iota(Q_6,Q_2)"`
+- `"isolation number" hypercube subcube`
+- `"radius-covering array" hypercube isolation`
+- `"CAN_1(4,6,2)"`
+- `"CAN_1(7,9,2)"`
+- `"CAN_1(m,m+2,2)" Hamming code`
+- `"perfect code" "radius-covering array"`
+- `"generalized surjective code" perfect code`
+- `"puncturing" "generalized surjective code"`
+- `"robust" puncturing perfect Hamming code covering radius`
+
+The primary sources inspected were:
+
+- Brešar--Rall, *On the isolation numbers in graph products*,
+  arXiv:2608.25752v1 (2026), especially Problem 2;
+- Colbourn--Kéri--Rivas Soriano--Schlage-Puchta (2010), definitions, exact
+  tables, and Theorem 7.3;
+- Quistorff--Schlage-Puchta, *On generalized surjective codes* (2011), which
+  studies the same coding object under `s`-surjective-with-radius notation
+  and includes recursive bounds and exact small cases.
+
+## Outcome
+
+No source located in these searches states the graph--coding identity in the
+form above, the general perfect-code volume obstruction, or the resulting
+binary Hamming-codimension `iff k=1` classification. This is evidence for
+further expert review, not a priority certificate. The structural proof is
+short enough that it may be an unpublished folklore consequence of coding
+and covering-array theory.
+
+## Required external gate
+
+Before any publication-level novelty claim:
+
+1. obtain review from a radius-covering-array or coding-theory expert;
+2. obtain review from a graph theorist familiar with subgraph isolation;
+3. send the corrected result to Brešar and Rall;
+4. ask specifically whether the exact dictionary or perfect-code
+   obstruction is known under alternate terminology;
+5. complete or clearly delimit the Lean formalization of the full packing
+   argument.
+
+Current novelty label:
+
+```text
+small numerical result: not new
+structural package: no prior source located; priority unconfirmed
+```
