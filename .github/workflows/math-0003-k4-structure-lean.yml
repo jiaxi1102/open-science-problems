@@ -1,0 +1,55 @@
+name: math-0003 K4 structure Lean verification
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - problems/math-0003-kneser-ramsey-lower-bound/formal/k4-structure/**
+      - .github/workflows/math-0003-k4-structure-lean.yml
+  pull_request:
+    paths:
+      - problems/math-0003-kneser-ramsey-lower-bound/formal/k4-structure/**
+      - .github/workflows/math-0003-k4-structure-lean.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: problems/math-0003-kneser-ramsey-lower-bound/formal/k4-structure
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reject unfinished declarations
+        shell: bash
+        run: |
+          if grep -nE '\b(sorry|admit|axiom)\b' K4Classification.lean; then
+            echo 'Unfinished or added axiom marker found'
+            exit 1
+          fi
+
+      - name: Install pinned Lean toolchain
+        shell: bash
+        run: |
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Resolve pinned dependencies
+        shell: bash
+        run: lake update
+
+      - name: Download mathlib cache
+        shell: bash
+        run: lake exe cache get
+
+      - name: Elaborate and kernel-check finite classification
+        shell: bash
+        run: |
+          lake env lean K4Classification.lean | tee lean-output.txt
+          lake build
+          grep -q "two_orbit_classification' depends on axioms: \[\]" lean-output.txt
+          grep -q "triangle_star_equivalence' depends on axioms: \[\]" lean-output.txt
