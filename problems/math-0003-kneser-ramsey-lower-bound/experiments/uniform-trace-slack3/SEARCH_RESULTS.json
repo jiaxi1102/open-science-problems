@@ -1,0 +1,82 @@
+{
+  "results": [
+    {
+      "artifact_id": 9874786287,
+      "classification": "PURE_TRACE_QUOTIENT_IMPOSSIBLE",
+      "drat_trim_verified": true,
+      "github_digest": "sha256:3c37ba0a1f09e1c3a9567c98a790f35ed71950b165d7a0a94a24b5a04f2e1402",
+      "m": 4,
+      "sat_certificate_verified": false,
+      "size_bytes": 45119,
+      "status": "UNSAT_PURE_TRACE_GADGET_DRAT_VERIFIED",
+      "zip_sha256": "3c37ba0a1f09e1c3a9567c98a790f35ed71950b165d7a0a94a24b5a04f2e1402"
+    },
+    {
+      "artifact_id": 9874588018,
+      "classification": "PURE_TRACE_QUOTIENT_IMPOSSIBLE",
+      "drat_trim_verified": true,
+      "github_digest": "sha256:c1fa7bf61665876e221b345e69e86f2ad18812a777508dee3f30bfa85cb86e08",
+      "m": 5,
+      "sat_certificate_verified": false,
+      "size_bytes": 48040,
+      "status": "UNSAT_PURE_TRACE_GADGET_DRAT_VERIFIED",
+      "zip_sha256": "c1fa7bf61665876e221b345e69e86f2ad18812a777508dee3f30bfa85cb86e08"
+    },
+    {
+      "artifact_id": 9874943052,
+      "classification": "PURE_TRACE_QUOTIENT_IMPOSSIBLE",
+      "drat_trim_verified": true,
+      "github_digest": "sha256:7e7c95c8322968bf851fbdd6a929f98e24e52475667107a30e8fa468e34f7a07",
+      "m": 6,
+      "sat_certificate_verified": false,
+      "size_bytes": 57716,
+      "status": "UNSAT_PURE_TRACE_GADGET_DRAT_VERIFIED",
+      "zip_sha256": "7e7c95c8322968bf851fbdd6a929f98e24e52475667107a30e8fa468e34f7a07"
+    },
+    {
+      "artifact_id": 9874788722,
+      "classification": "PURE_TRACE_QUOTIENT_IMPOSSIBLE",
+      "drat_trim_verified": true,
+      "github_digest": "sha256:f40bed750ab5fb9b61d00ed1daf5dccd578146386a3a9bd39d5910c70929b3a6",
+      "m": 7,
+      "sat_certificate_verified": false,
+      "size_bytes": 99627,
+      "status": "UNSAT_PURE_TRACE_GADGET_DRAT_VERIFIED",
+      "zip_sha256": "f40bed750ab5fb9b61d00ed1daf5dccd578146386a3a9bd39d5910c70929b3a6"
+    },
+    {
+      "artifact_id": 9874542715,
+      "classification": "PURE_TRACE_QUOTIENT_IMPOSSIBLE",
+      "drat_trim_verified": true,
+      "github_digest": "sha256:3e00d02700479f0bd7311eab22bbd9be111b0220c9a7dff6814846aa2791b4d4",
+      "m": 8,
+      "sat_certificate_verified": false,
+      "size_bytes": 257192,
+      "status": "UNSAT_PURE_TRACE_GADGET_DRAT_VERIFIED",
+      "zip_sha256": "3e00d02700479f0bd7311eab22bbd9be111b0220c9a7dff6814846aa2791b4d4"
+    },
+    {
+      "artifact_id": 9874913988,
+      "classification": "PURE_TRACE_QUOTIENT_IMPOSSIBLE",
+      "drat_trim_verified": true,
+      "github_digest": "sha256:0145a5d67ba97cc75d05a542fbc90146cef46a67c9ce596032fa933a0f62f8ed",
+      "m": 9,
+      "sat_certificate_verified": false,
+      "size_bytes": 791121,
+      "status": "UNSAT_PURE_TRACE_GADGET_DRAT_VERIFIED",
+      "zip_sha256": "0145a5d67ba97cc75d05a542fbc90146cef46a67c9ce596032fa933a0f62f8ed"
+    }
+  ],
+  "searched_m": [
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "slack": 3,
+  "strongest_uniform_consequence": null,
+  "verified_gadgets": [],
+  "workflow_run_id": 33702918918
+}
