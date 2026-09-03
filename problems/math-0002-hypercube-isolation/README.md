@@ -6,8 +6,8 @@
 |---|---|
 | Problem | `refuted`: the universal equality fails |
 | Structural result | exact equivalence with binary radius-covering arrays; infinite-family and asymptotic consequences proved |
-| Formal verification | finite `(6,2)` certificate complete; structural Lean layer in progress |
-| Novelty | the value `CAN_1(4,6,2)=5` is 2010 prior art; graph translation and new structural theorems require expert/author confirmation |
+| Formal verification | coordinate-copy theorem, graph--coding dictionary, and obstruction arithmetic verified in Lean; full perfect-code packing argument remains human-checked; finite `(6,2)` certificate complete |
+| Novelty | the value `CAN_1(4,6,2)=5` is 2010 prior art; graph translation and candidate-new structural theorems require expert/author confirmation |
 | External review | none yet |
 
 ## Original question
@@ -54,10 +54,10 @@ For every `t>=3`, put `m=2^t-1`. Then
 
 The equality for `k=1` is the known parity-extension theorem for binary
 radius-covering arrays. For every `k>=2`, strict inequality follows from a
-new robust-extension obstruction for perfect codes: if every deletion of
-two columns from an optimal-size array had covering radius one, each
-projection would be a perfect Hamming code, forcing full minimum distance
-at least five; the Hamming packing bound then gives a contradiction.
+robust-extension obstruction for perfect codes: if every deletion of two
+columns from an optimal-size array had covering radius one, each projection
+would be a perfect Hamming code, forcing full minimum distance at least
+five; the Hamming packing bound then gives a contradiction.
 
 ### Fixed-codimension phase transition
 
@@ -103,28 +103,35 @@ This numerical value is **not new**. The repository retains an independent
 proof, Python enumeration, and Lean certificate because they make the graph
 counterexample directly auditable.
 
-## Verification
+## Lean verification
 
-The current Lean file
-[`formal/HypercubeIsolation.lean`](formal/HypercubeIsolation.lean) verifies:
+The pinned Lean `4.33.1` / Mathlib `v4.33.1` development verifies four
+separate layers.
 
-1. `{0000,0001,1110,1111}` dominates `Q_4`;
-2. no three vertices dominate `Q_4`;
-3. the displayed five vertices isolate every coordinate square of `Q_6`;
-4. no four vertices do.
+1. [`formal/HypercubeIsolation/CubeCopies.lean`](formal/HypercubeIsolation/CubeCopies.lean)
+   proves that every injective edge-preserving copy of `Q_k` in `Q_n` is a
+   coordinate copy determined by a base vertex and an injection of axes.
+2. [`formal/HypercubeIsolation/StructuralTheory.lean`](formal/HypercubeIsolation/StructuralTheory.lean)
+   proves the exact distance-to-face identity and the equivalence between
+   meeting every radius-`r` face neighborhood and the binary
+   radius-covering-array property.
+3. The same structural file proves, by kernel-checked ring arithmetic, the
+   general binary two-extra-column volume inequality used by the Hamming
+   family.
+4. [`formal/HypercubeIsolation.lean`](formal/HypercubeIsolation.lean) verifies
+   the independent finite `(6,2)` witness and lower bound.
 
-The first three checks use kernel reduction. The exhaustive fourth check
-uses `native_decide`, and its generated axiom is disclosed in
-[`artifacts/CI.md`](artifacts/CI.md). The same finite claim is independently
-reproduced by [`experiments/discover.py`](experiments/discover.py).
+The first three structural declarations use only Lean's standard logical
+axioms (`propext`, `Classical.choice`, and `Quot.sound`). The exhaustive
+four-vertex exclusion in the legacy finite certificate uses `native_decide`;
+its generated proposition-specific axiom is disclosed in
+[`artifacts/CI.md`](artifacts/CI.md), and an independent Python enumeration
+reproduces the result.
 
-The next formal layer is being added on the new structural branch:
-
-- the coordinate-face/projection distance identity;
-- the equivalence between subcube isolation and radius-covering arrays;
-- the length-nine Hamming packing obstruction underlying the first member
-  `m=7` of the infinite family;
-- kernel-checked arithmetic for the general volume inequality.
+The remaining formalization boundary is explicit: the general theorem that
+combines perfect projected codes, distance amplification under all
+puncturings, and the Hamming packing bound is presently supplied by the
+human proof. Formalizing that theorem is the next Lean milestone.
 
 ## Prior-art correction
 
@@ -138,11 +145,11 @@ particular:
 - their table records `CAN_1(4,6,2)=5`;
 - their Theorem 7.3 proves `CAN_r(m,m+1,2)=K_2(m,r)`.
 
-No priority claim should be made for the graph--coding bridge or the new
-theorems until coding theorists, graph theorists, and the authors of the
-2026 problem review them.
+No priority claim should be made for the graph--coding bridge, the
+perfect-code obstruction, or the Hamming-family classification until coding
+theorists, graph theorists, and the authors of the 2026 problem review them.
 
-## Build
+## Reproduction
 
 ```bash
 cd formal
