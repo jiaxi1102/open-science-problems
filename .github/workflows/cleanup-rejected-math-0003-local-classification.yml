@@ -1,0 +1,38 @@
+name: cleanup rejected math-0003 local classification
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - .github/workflows/cleanup-rejected-math-0003-local-classification.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/math-0003-exact-r3
+          fetch-depth: 0
+      - name: Remove scripts and workflows relying on the false completeness claim
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f \
+            tools/classify_k9_matching_colorings.py \
+            tools/kg12_localtype_sat.py \
+            .github/workflows/research-math-0003-local-classification.yml \
+            .github/workflows/research-math-0003-localtype.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'Rejected files already absent'
+          else
+            git commit -m 'Remove rejected local-classification experiment'
+            git push origin HEAD:research/math-0003-exact-r3
+          fi
