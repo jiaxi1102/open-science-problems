@@ -12,6 +12,11 @@ coordinates of `a` in `S` matter.  The distance from `x` to that face is exactly
 the number of disagreements between `x` and `a` on `S`.  Consequently, a set
 hits the radius-`r` neighborhood of every such face exactly when its rows form
 a binary radius-covering array.
+
+This module also verifies the polynomial identity and positivity inequality
+used by the two-extra-column Hamming-family obstruction.  The general theorem
+that turns perfect projected codes into a packing contradiction is currently
+proved in the accompanying human proof and is not claimed as formalized here.
 -/
 
 /-- Vertices of the binary `n`-cube. -/
