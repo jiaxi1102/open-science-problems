@@ -132,8 +132,8 @@ M V_q(m,r) = q^m.
 ```
 
 Since their union already has size `q^m`, the balls are pairwise disjoint.
-Thus every `m`-column projection is a perfect code and has minimum distance
-at least `2r+1`.
+In particular, no two projected rows coincide, and every `m`-column
+projection is a perfect code with minimum distance at least `2r+1`.
 
 Take two distinct full rows at distance `d`. Delete `ell` coordinates
 containing as many of their disagreements as possible. The remaining
@@ -285,19 +285,30 @@ By Theorem 2.1 this immediately yields
 
 The five-row witness in this repository and its Lean certificate remain
 useful as an independently checkable illustration, but the numerical value
-must not be presented as new. The new mathematical content sought here is
-the graph--coding equivalence and the structural consequences above.
+must not be presented as new. The candidate contribution is the
+graph--coding equivalence and the structural consequences above.
 
-## 6. Trust and novelty boundary
+## 6. Formalization and novelty boundary
 
-The proofs in Sections 2--4 are self-contained. The following external
-inputs are standard and explicitly identified:
+The coordinate-copy theorem, exact distance-to-face identity, graph--coding
+equivalence, and binary two-column volume arithmetic are formalized in Lean
+`4.33.1` with Mathlib `v4.33.1`. The current structural axiom reports contain
+only `propext`, `Classical.choice`, and `Quot.sound`.
+
+The general perfect-code packing implication in Theorem 3.1 and the
+probabilistic upper bound in Theorem 4.1 remain human proofs. The finite
+`(6,2)` lower bound uses a separately disclosed `native_decide` axiom and is
+independently reproduced in Python.
+
+The following external inputs are standard and explicitly identified:
 
 1. the definition and notation for radius-covering arrays;
 2. the known equality `CAN_r(m,m+1,2)=K_2(m,r)`;
 3. existence of q-ary Hamming perfect codes;
 4. the 2010 table entry `CAN_1(4,6,2)=5`.
 
-Public searches performed on 2026-09-02 did not locate the graph--coding
-equivalence, Theorem 3.1, or the resulting classification in Corollary 3.3.
-That supports further expert review; it is not a priority certificate.
+Public searches performed through 2026-09-02 did not locate the
+graph--coding equivalence, Theorem 3.1, or the resulting classification in
+Corollary 3.3. That supports further expert review; it is not a priority
+certificate, and these deductions may exist under alternate coding-theory
+terminology.
