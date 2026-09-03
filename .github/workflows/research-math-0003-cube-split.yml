@@ -1,0 +1,122 @@
+name: research math-0003 exhaustive cube split
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - tools/kg12_r3_cube_sat.py
+      - tools/kg12_r3_split_sat.py
+      - .github/workflows/research-math-0003-cube-split.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve-cube:
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        branch: [matching, path]
+        cube: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate exact cube CNF
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH='${{ matrix.branch }}'
+          CUBE='${{ matrix.cube }}'
+          DIR="cube-$BRANCH-$CUBE"
+          mkdir -p "$DIR"
+          python tools/kg12_r3_cube_sat.py --branch "$BRANCH" --cube "$CUBE" \
+            --cnf "$DIR/instance.cnf" \
+            --metadata "$DIR/instance-metadata.json"
+
+      - name: Install pinned Kissat and DRAT checker
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH='${{ matrix.branch }}'
+          CUBE='${{ matrix.cube }}'
+          DIR="cube-$BRANCH-$CUBE"
+          curl --fail --location --retry 3 \
+            https://github.com/arminbiere/kissat/releases/download/rel-4.0.4/kissat-4.0.4-linux-amd64.zip \
+            --output kissat.zip
+          echo '63282e5168ca040a2018edfba0726bf893a7a6bcdb1db87feb67857e2da697a7  kissat.zip' \
+            | sha256sum --check --strict
+          unzip -q kissat.zip -d kissat-dist
+          KISSAT=''
+          while IFS= read -r candidate; do
+            if file "$candidate" | grep -q 'ELF'; then
+              KISSAT="$candidate"
+              break
+            fi
+          done < <(find kissat-dist -type f -print | sort)
+          test -n "$KISSAT"
+          chmod +x "$KISSAT"
+          "$KISSAT" --version | tee "$DIR/kissat-version.txt"
+          echo "KISSAT=$GITHUB_WORKSPACE/$KISSAT" >> "$GITHUB_ENV"
+          curl --fail --location --retry 3 \
+            https://raw.githubusercontent.com/marijnheule/drat-trim/2e3b2dc0ecf938addbd779d42877b6ed69d9a985/drat-trim.c \
+            --output "$DIR/drat-trim.c"
+          gcc -O3 -DNDEBUG "$DIR/drat-trim.c" -o "$DIR/drat-trim"
+
+      - name: Solve and certify exact cube
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH='${{ matrix.branch }}'
+          CUBE='${{ matrix.cube }}'
+          DIR="cube-$BRANCH-$CUBE"
+          set +e
+          "$KISSAT" --time=1050 "$DIR/instance.cnf" "$DIR/proof.drat" \
+            > "$DIR/kissat.out" 2> "$DIR/kissat.err"
+          code=$?
+          set -e
+          printf '%s\n' "$code" > "$DIR/kissat.exit-code.txt"
+          if [ "$code" -eq 10 ]; then
+            python tools/kg12_r3_split_sat.py --branch "$BRANCH" verify-model \
+              --solver-output "$DIR/kissat.out" \
+              --certificate "$DIR/sat-certificate.json"
+            printf 'SAT_FULL_KG12_MODEL_VERIFIED\n' > "$DIR/status.txt"
+          elif [ "$code" -eq 20 ]; then
+            "$DIR/drat-trim" "$DIR/instance.cnf" "$DIR/proof.drat" \
+              > "$DIR/drat-trim.out" 2> "$DIR/drat-trim.err"
+            grep -q 'VERIFIED' "$DIR/drat-trim.out"
+            printf 'UNSAT_EXACT_CUBE_DRAT_VERIFIED\n' > "$DIR/status.txt"
+          else
+            printf 'INCONCLUSIVE_EXIT_%s\n' "$code" > "$DIR/status.txt"
+            exit 1
+          fi
+          cat "$DIR/status.txt"
+
+      - name: Record checksums and compress proof
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH='${{ matrix.branch }}'
+          CUBE='${{ matrix.cube }}'
+          DIR="cube-$BRANCH-$CUBE"
+          find "$DIR" -maxdepth 1 -type f ! -name SHA256SUMS.txt \
+            -print0 | sort -z | xargs -0 sha256sum > "$DIR/SHA256SUMS.txt"
+          if [ -s "$DIR/proof.drat" ]; then
+            gzip -9 "$DIR/proof.drat"
+          fi
+
+      - name: Upload cube certificate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: math-0003-cube-${{ matrix.branch }}-${{ matrix.cube }}
+          path: cube-${{ matrix.branch }}-${{ matrix.cube }}/
+          if-no-files-found: error
+          retention-days: 30
