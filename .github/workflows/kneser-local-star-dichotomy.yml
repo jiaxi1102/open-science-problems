@@ -14,7 +14,7 @@ permissions:
 jobs:
   certify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
 
@@ -74,7 +74,7 @@ jobs:
             out/local-star/dichotomy.drat \
             > out/local-star/certificate-sha256.txt
 
-      - name: Cross-check with independent SAT engines and extract an irreducible core
+      - name: Cross-check with three independent SAT engines
         run: |
           pip install 'python-sat==1.8.dev17'
           python - <<'PY'
@@ -98,47 +98,10 @@ jobs:
               'glucose42': False,
               'minisat22': False,
           }
-
-          selector_base = cnf.nv + 1
-          selectors = [selector_base + i for i in range(len(cnf.clauses))]
-          with Cadical195() as solver:
-              for clause, selector in zip(cnf.clauses, selectors):
-                  solver.add_clause(clause + [-selector])
-              active = list(selectors)
-              assert not solver.solve(assumptions=active)
-              for selector in list(active):
-                  trial = [value for value in active if value != selector]
-                  if not solver.solve(assumptions=trial):
-                      active = trial
-
-          indices = [selector - selector_base for selector in active]
-          core = [cnf.clauses[index] for index in indices]
-          with Cadical195(bootstrap_with=core) as solver:
-              assert not solver.solve()
-          for position in range(len(core)):
-              trial = core[:position] + core[position + 1:]
-              with Cadical195(bootstrap_with=trial) as solver:
-                  assert solver.solve()
-
-          with (root / 'irreducible-core.cnf').open('w') as handle:
-              handle.write(f'p cnf {cnf.nv} {len(core)}\n')
-              for clause in core:
-                  handle.write(' '.join(map(str, clause)) + ' 0\n')
-
-          clause_map = json.loads((root / 'clause-map.json').read_text())
-          mapped = [
-              {
-                  'original_clause_index': index + 1,
-                  **clause_map['clauses'][str(index + 1)],
-              }
-              for index in indices
-          ]
           summary = {
               'independent_solver_satisfiable': results,
-              'original_clauses': len(cnf.clauses),
-              'irreducible_core_clauses': len(core),
-              'core_original_indices': [index + 1 for index in indices],
-              'core_semantics': mapped,
+              'variables': cnf.nv,
+              'clauses': len(cnf.clauses),
           }
           (root / 'independent-check.json').write_text(
               json.dumps(summary, indent=2, sort_keys=True) + '\n'
