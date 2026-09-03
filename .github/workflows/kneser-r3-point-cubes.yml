@@ -1,0 +1,124 @@
+name: Exact KG(12,3) point-case cubes
+
+on:
+  push:
+    branches: [math-kneser-ramsey-frontier]
+    paths:
+      - tools/kneser_exact_cnf.py
+      - tools/kneser_r3_local_cases.py
+      - tools/kneser_r3_point_cubes.py
+      - .github/workflows/kneser-r3-point-cubes.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        cube:
+          - point-red-A
+          - point-blue-Q
+          - barrier-a0
+          - barrier-a1-red
+          - barrier-a1-blue
+          - barrier-a2-red
+          - barrier-a2-blue
+          - barrier-a3
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate one mathematically complete cube
+        run: |
+          mkdir -p out
+          python -m py_compile \
+            tools/kneser_exact_cnf.py \
+            tools/kneser_r3_local_cases.py \
+            tools/kneser_r3_point_cubes.py
+          python tools/kneser_r3_point_cubes.py generate \
+            --cube '${{ matrix.cube }}' \
+            --closure prime \
+            --cnf out/cube.cnf \
+            --metadata out/metadata.json
+
+      - name: Build pinned Kissat
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone --quiet https://github.com/arminbiere/kissat.git /tmp/kissat
+          git -C /tmp/kissat checkout --quiet 8af8e56f174b778aef3aa45af9f739b2a5f492c2
+          cd /tmp/kissat
+          ./configure
+          make -C build -j2
+          test -x /tmp/kissat/build/kissat
+          /tmp/kissat/build/kissat --version > "$GITHUB_WORKSPACE/out/kissat-version.txt"
+
+      - name: Decide the cube
+        shell: bash
+        run: |
+          set +e
+          timeout --signal=TERM --kill-after=30s 20m \
+            /tmp/kissat/build/kissat out/cube.cnf \
+            > out/solver.log 2>&1
+          rc=$?
+          set -e
+
+          if grep -q 's SATISFIABLE' out/solver.log; then
+            status=SATISFIABLE
+            python tools/kneser_r3_point_cubes.py check \
+              --cube '${{ matrix.cube }}' \
+              --model out/solver.log \
+              --out out/validated-witness.json
+          elif grep -q 's UNSATISFIABLE' out/solver.log; then
+            status=UNSATISFIABLE
+          elif [[ "$rc" -eq 124 || "$rc" -eq 137 || "$rc" -eq 143 ]]; then
+            status=TIMEOUT
+          else
+            status=ERROR
+          fi
+
+          python - "$status" "$rc" '${{ matrix.cube }}' <<'PY'
+          import json, pathlib, sys
+          status, rc, cube = sys.argv[1:]
+          metadata = json.loads(pathlib.Path('out/metadata.json').read_text())
+          result = {
+              **metadata,
+              'cube_name': cube,
+              'solver': 'kissat',
+              'solver_status': status,
+              'solver_exit_code': int(rc),
+              'kissat_commit': '8af8e56f174b778aef3aa45af9f739b2a5f492c2',
+          }
+          pathlib.Path('out/result.json').write_text(
+              json.dumps(result, indent=2, sort_keys=True) + '\n'
+          )
+          print(json.dumps(result, indent=2, sort_keys=True))
+          PY
+
+          if [[ "$status" == 'ERROR' ]]; then
+            tail -200 out/solver.log
+            exit 1
+          fi
+
+      - name: Upload cube evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kg12-r3-point-${{ matrix.cube }}
+          path: |
+            out/metadata.json
+            out/result.json
+            out/validated-witness.json
+            out/solver.log
+            out/kissat-version.txt
+          if-no-files-found: warn
+          retention-days: 30
