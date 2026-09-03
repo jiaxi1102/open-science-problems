@@ -1,0 +1,59 @@
+name: report math-0003 trace10 result
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - .github/workflows/report-math-0003-trace10.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download and summarize trace10 artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/jiaxi1102/open-science-problems/actions/artifacts/9872854743/zip \
+            --output trace10.zip
+          unzip -q trace10.zip -d trace10
+          status="$(tr -d '\r\n' < trace10/status.txt)"
+          exit_code="$(tr -d '\r\n' < trace10/kissat.exit-code.txt)"
+          metadata_sha="$(sha256sum trace10/instance-metadata.json | cut -d' ' -f1)"
+          archive_sha="$(sha256sum trace10.zip | cut -d' ' -f1)"
+          if test -f trace10/drat-trim.out; then
+            drat_tail="$(grep -E '^(c |s )|VERIFIED|NOT VERIFIED' trace10/drat-trim.out | tail -n 12)"
+          else
+            drat_tail='(no DRAT checker output; SAT-model path expected)'
+          fi
+          cat > comment.md <<EOF
+          <!-- math-0003-trace10-report -->
+          ## Certified ten-point trace-quotient result
+
+          **Status:** \`$status\`  
+          **Kissat exit code:** \`$exit_code\`  
+          **Original artifact:** \`9872854743\`  
+          **Downloaded ZIP SHA-256:** \`$archive_sha\`  
+          **Instance metadata SHA-256:** \`$metadata_sha\`
+
+          This is a result about the ten-distinguished-point trace quotient. A SAT model would lift to a full coloring of \`KG(12,3)\`; an UNSAT certificate only rules out this quotient ansatz.
+
+          DRAT/model-check summary:
+
+          \`\`\`text
+          $drat_tail
+          \`\`\`
+          EOF
+          gh pr comment 11 --repo jiaxi1102/open-science-problems --body-file comment.md
