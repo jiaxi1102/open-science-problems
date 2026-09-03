@@ -13,7 +13,7 @@ def flip {n : ℕ} (x : CubeVertex n) (i : Fin n) : CubeVertex n := x ∆ {i}
 
 @[simp] theorem flip_flip {n : ℕ} (x : CubeVertex n) (i : Fin n) :
     flip (flip x i) i = x := by
-  simp [flip, symmDiff_assoc]
+  simp [flip]
 
 theorem flip_comm {n : ℕ} (x : CubeVertex n) (i j : Fin n) :
     flip (flip x i) j = flip (flip x j) i := by
@@ -130,7 +130,10 @@ theorem label_flip (x : CubeVertex k) (i j : Fin k) :
     let q := F.label (flip x i) j
     let r := F.label (flip x j) i
     have hps : p ≠ s := by
-      exact (F.label_injective_at x) hij
+      intro hps_eq
+      apply hij
+      apply F.label_injective_at x
+      simpa [p, s] using hps_eq
     have hpq : p ≠ q := by
       intro hpqeq
       have hrev : F.label (flip x i) i = p := by
@@ -143,13 +146,17 @@ theorem label_flip (x : CubeVertex k) (i j : Fin k) :
         _ = q := hpqeq
     have hsquare : flip (flip (F.toFun x) p) q = flip (flip (F.toFun x) s) r := by
       calc
-        flip (flip (F.toFun x) p) q = F.toFun (flip (flip x i) j) := by
-          rw [F.map_flip_label x i]
-          exact (F.map_flip_label (flip x i) j).symm
+        flip (flip (F.toFun x) p) q = flip (F.toFun (flip x i)) q := by
+          apply congrArg (fun z : CubeVertex n => flip z q)
+          simpa [p] using (F.map_flip_label x i).symm
+        _ = F.toFun (flip (flip x i) j) := by
+          simpa [q] using (F.map_flip_label (flip x i) j).symm
         _ = F.toFun (flip (flip x j) i) := by rw [flip_comm]
+        _ = flip (F.toFun (flip x j)) r := by
+          simpa [r] using F.map_flip_label (flip x j) i
         _ = flip (flip (F.toFun x) s) r := by
-          rw [F.map_flip_label x j]
-          exact F.map_flip_label (flip x j) i
+          apply congrArg (fun z : CubeVertex n => flip z r)
+          simpa [s] using F.map_flip_label x j
     have hop := opposite_labels_of_square hpq hps hsquare
     exact hop.1.symm
 
@@ -185,7 +192,9 @@ noncomputable def coordinateMap (x : CubeVertex k) : CubeVertex n :=
 theorem toFun_eq_coordinateMap (x : CubeVertex k) :
     F.toFun x = F.coordinateMap x := by
   induction x using Finset.induction_on with
-  | empty => simp [coordinateMap]
+  | empty =>
+      ext j
+      simp [coordinateMap, Finset.mem_symmDiff]
   | @insert a x ha ih =>
       have ha_image : F.axis a ∉ x.map F.axis := by
         simp [ha]
@@ -194,9 +203,17 @@ theorem toFun_eq_coordinateMap (x : CubeVertex k) :
           rw [flip_eq_insert_of_notMem ha]
         _ = flip (F.toFun x) (F.axis a) := F.map_flip_axis x a
         _ = flip (F.coordinateMap x) (F.axis a) := by rw [ih]
+        _ = F.toFun ∅ ∆ (x.map F.axis ∆ {F.axis a}) := by
+          simp [coordinateMap, flip, symmDiff_assoc]
+        _ = F.toFun ∅ ∆ insert (F.axis a) (x.map F.axis) := by
+          apply congrArg (fun t : CubeVertex n => F.toFun ∅ ∆ t)
+          ext j
+          by_cases hja : j = F.axis a
+          · subst j
+            simp [Finset.mem_symmDiff, ha_image]
+          · simp [Finset.mem_symmDiff, hja]
         _ = F.coordinateMap (insert a x) := by
-          simp [coordinateMap, flip, Finset.map_insert, symmDiff_assoc,
-            Finset.symmDiff_eq_union, ha_image]
+          simp [coordinateMap, Finset.map_insert]
 
 /--
 Coordinate-copy theorem: the image of every abstract graph copy of `Q_k` in
