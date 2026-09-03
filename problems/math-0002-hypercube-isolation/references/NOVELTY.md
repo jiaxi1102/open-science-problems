@@ -44,6 +44,12 @@ CAN_r(m,m+1,2)=K_2(m,r),
 which supplies the positive one-extra-column case used in the structural
 classification.
 
+Its exact-value table also gives, for example, a lower bound strictly above
+`K_2(7,1)=16` for `CAN_1(7,9,2)`. Thus the first binary Hamming instance is
+already numerically visible in prior art. The candidate contribution is the
+uniform perfect-code proof and its graph-theoretic interpretation, not that
+individual parameter value.
+
 ## Candidate contribution
 
 The current candidate-new contribution is the package consisting of:
