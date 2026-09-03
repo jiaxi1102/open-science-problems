@@ -8,7 +8,7 @@ set_option maxRecDepth 100000
 namespace HypercubeIsolation
 
 /-!
-A finite, self-contained certificate for the counterexample
+A finite, self-contained certificate for the prior-art numerical illustration
 
   iota(Q_6, Q_2) = 5 > 4 = gamma(Q_4).
 
@@ -21,6 +21,10 @@ of the projected Q_4.
 The executable lower-bound check enumerates every strictly increasing four-element subset
 of the 64 vertices. Coverage is represented by a 240-bit natural-number mask:
 15 four-coordinate projections, each with 16 target vertices.
+
+The numerical value agrees with the 2010 radius-covering-array table entry
+CAN_1(4,6,2)=5. The candidate-new content of this project lives in the imported
+coordinate-copy and structural-theory modules.
 -/
 
 /-- The `i`th bit of `x`, returned as `0` or `1`. -/
