@@ -1,0 +1,115 @@
+name: research math-0003 canonical K4 split
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - tools/kg12_r3_split_sat.py
+      - .github/workflows/research-math-0003-k4-split.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve-branch:
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: [matching, path]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate exact branch CNF
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH='${{ matrix.branch }}'
+          mkdir -p "k4-$BRANCH"
+          python tools/kg12_r3_split_sat.py --branch "$BRANCH" generate \
+            --cnf "k4-$BRANCH/instance.cnf" \
+            --metadata "k4-$BRANCH/instance-metadata.json"
+
+      - name: Install pinned Kissat and DRAT checker
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH='${{ matrix.branch }}'
+          curl --fail --location --retry 3 \
+            https://github.com/arminbiere/kissat/releases/download/rel-4.0.4/kissat-4.0.4-linux-amd64.zip \
+            --output kissat.zip
+          echo '63282e5168ca040a2018edfba0726bf893a7a6bcdb1db87feb67857e2da697a7  kissat.zip' \
+            | sha256sum --check --strict
+          unzip -q kissat.zip -d kissat-dist
+          KISSAT=''
+          while IFS= read -r candidate; do
+            if file "$candidate" | grep -q 'ELF'; then
+              KISSAT="$candidate"
+              break
+            fi
+          done < <(find kissat-dist -type f -print | sort)
+          test -n "$KISSAT"
+          chmod +x "$KISSAT"
+          "$KISSAT" --version | tee "k4-$BRANCH/kissat-version.txt"
+          echo "KISSAT=$GITHUB_WORKSPACE/$KISSAT" >> "$GITHUB_ENV"
+
+          curl --fail --location --retry 3 \
+            https://raw.githubusercontent.com/marijnheule/drat-trim/2e3b2dc0ecf938addbd779d42877b6ed69d9a985/drat-trim.c \
+            --output "k4-$BRANCH/drat-trim.c"
+          gcc -O3 -DNDEBUG "k4-$BRANCH/drat-trim.c" -o "k4-$BRANCH/drat-trim"
+
+      - name: Solve and certify branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH='${{ matrix.branch }}'
+          set +e
+          "$KISSAT" --time=1800 \
+            "k4-$BRANCH/instance.cnf" "k4-$BRANCH/proof.drat" \
+            > "k4-$BRANCH/kissat.out" 2> "k4-$BRANCH/kissat.err"
+          code=$?
+          set -e
+          printf '%s\n' "$code" > "k4-$BRANCH/kissat.exit-code.txt"
+
+          if [ "$code" -eq 10 ]; then
+            python tools/kg12_r3_split_sat.py --branch "$BRANCH" verify-model \
+              --solver-output "k4-$BRANCH/kissat.out" \
+              --certificate "k4-$BRANCH/sat-certificate.json"
+            printf 'SAT_FULL_KG12_MODEL_VERIFIED\n' > "k4-$BRANCH/status.txt"
+          elif [ "$code" -eq 20 ]; then
+            "k4-$BRANCH/drat-trim" \
+              "k4-$BRANCH/instance.cnf" "k4-$BRANCH/proof.drat" \
+              > "k4-$BRANCH/drat-trim.out" 2> "k4-$BRANCH/drat-trim.err"
+            grep -q 'VERIFIED' "k4-$BRANCH/drat-trim.out"
+            printf 'UNSAT_BRANCH_DRAT_VERIFIED\n' > "k4-$BRANCH/status.txt"
+          else
+            printf 'INCONCLUSIVE_EXIT_%s\n' "$code" > "k4-$BRANCH/status.txt"
+            exit 1
+          fi
+          cat "k4-$BRANCH/status.txt"
+
+      - name: Record checksums and compress proof
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH='${{ matrix.branch }}'
+          find "k4-$BRANCH" -maxdepth 1 -type f ! -name SHA256SUMS.txt \
+            -print0 | sort -z | xargs -0 sha256sum > "k4-$BRANCH/SHA256SUMS.txt"
+          if [ -s "k4-$BRANCH/proof.drat" ]; then
+            gzip -9 "k4-$BRANCH/proof.drat"
+          fi
+
+      - name: Upload branch certificate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: math-0003-k4-${{ matrix.branch }}
+          path: k4-${{ matrix.branch }}/
+          if-no-files-found: error
+          retention-days: 90
