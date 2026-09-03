@@ -1,0 +1,45 @@
+name: research math-0003 local classification
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - tools/classify_k9_matching_colorings.py
+      - .github/workflows/research-math-0003-local-classification.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  classify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Exhaustively enumerate and classify all local colorings
+        run: python tools/classify_k9_matching_colorings.py
+
+      - name: Re-run for deterministic output
+        shell: bash
+        run: |
+          set -euo pipefail
+          target='problems/math-0003-kneser-ramsey-lower-bound/experiments/kg12-r3/local-neighborhood-classification.json'
+          cp "$target" /tmp/first.json
+          python tools/classify_k9_matching_colorings.py > /tmp/second.stdout
+          cmp /tmp/first.json "$target"
+          sha256sum "$target" | tee local-classification.sha256
+
+      - name: Upload classification certificate
+        uses: actions/upload-artifact@v4
+        with:
+          name: math-0003-local-neighborhood-classification
+          path: |
+            problems/math-0003-kneser-ramsey-lower-bound/experiments/kg12-r3/local-neighborhood-classification.json
+            local-classification.sha256
+          if-no-files-found: error
+          retention-days: 90
