@@ -1,0 +1,166 @@
+name: harvest math-0003 uniform trace gadgets
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - .github/workflows/harvest-math-0003-uniform-traces.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  harvest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/math-0003-exact-r3
+          fetch-depth: 0
+
+      - name: Wait for latest uniform-gadget matrix
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo='jiaxi1102/open-science-problems'
+          branch='research/math-0003-exact-r3'
+          for attempt in $(seq 1 50); do
+            gh api "/repos/$repo/actions/runs?branch=$branch&per_page=100" > /tmp/runs.json
+            run_id="$(python - <<'PY'
+          import json
+          runs=json.load(open('/tmp/runs.json')).get('workflow_runs',[])
+          xs=[r for r in runs if r['name']=='research math-0003 uniform trace gadgets']
+          xs.sort(key=lambda r:r['created_at'],reverse=True)
+          print(xs[0]['id'] if xs else '')
+          PY
+          )"
+            test -n "$run_id" || { sleep 20; continue; }
+            gh api "/repos/$repo/actions/runs/$run_id" > /tmp/run.json
+            status="$(python -c 'import json; print(json.load(open("/tmp/run.json"))["status"])')"
+            echo "attempt=$attempt run_id=$run_id status=$status"
+            if [ "$status" = completed ]; then
+              echo "UNIFORM_RUN_ID=$run_id" >> "$GITHUB_ENV"
+              break
+            fi
+            sleep 30
+          done
+          test "${status:-}" = completed || echo 'UNIFORM_RUN_ID=' >> "$GITHUB_ENV"
+
+      - name: Verify and preserve all six quotient outcomes
+        if: env.UNIFORM_RUN_ID != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo='jiaxi1102/open-science-problems'
+          run_id="$UNIFORM_RUN_ID"
+          root='problems/math-0003-kneser-ramsey-lower-bound/experiments/uniform-trace-slack3'
+          work='/tmp/uniform-trace-harvest'
+          mkdir -p "$root/certificates" "$work"
+          gh api "/repos/$repo/actions/runs/$run_id/artifacts?per_page=100" > "$work/artifacts.json"
+          python - <<'PY' > "$work/artifacts.tsv"
+          import json
+          xs=[a for a in json.load(open('/tmp/uniform-trace-harvest/artifacts.json')).get('artifacts',[]) if a['name'].startswith('math-0003-uniform-trace-') and not a.get('expired')]
+          for a in sorted(xs,key=lambda x:x['name']):
+              print('\t'.join([str(a['id']),a['name'],str(a['size_in_bytes']),a.get('digest') or '']))
+          PY
+          test "$(wc -l < "$work/artifacts.tsv")" -eq 6
+          : > "$work/results.tsv"
+          while IFS=$'\t' read -r artifact_id name size digest; do
+            zip="$work/$artifact_id.zip"
+            curl --fail --silent --show-error --location \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$repo/actions/artifacts/$artifact_id/zip" \
+              --output "$zip"
+            status_member="$(unzip -Z1 "$zip" | grep -E '(^|/)status\.txt$' | head -n1)"
+            status="$(unzip -p "$zip" "$status_member" | tr -d '\r\n')"
+            checker='false'
+            checker_member="$(unzip -Z1 "$zip" | grep -E '(^|/)drat-trim\.out$' | head -n1 || true)"
+            if [ -n "$checker_member" ]; then
+              unzip -p "$zip" "$checker_member" > "$work/checker.out"
+              if grep -q 'VERIFIED' "$work/checker.out" && ! grep -q 'NOT VERIFIED' "$work/checker.out"; then checker='true'; fi
+            fi
+            cert='false'
+            cert_member="$(unzip -Z1 "$zip" | grep -E '(^|/)sat-certificate\.json$' | head -n1 || true)"
+            if [ -n "$cert_member" ]; then
+              unzip -p "$zip" "$cert_member" > "$work/certificate.json"
+              cert="$(python - <<'PY'
+          import json
+          x=json.load(open('/tmp/uniform-trace-harvest/certificate.json'))
+          print(str(x.get('result')=='SAT_UNIFORM_TRACE_GADGET_VERIFIED' and x.get('monochromatic_trace_triangles')==0).lower())
+          PY
+          )"
+              m="${name##*-}"
+              dest="$root/certificates/m-$m"
+              mkdir -p "$dest"
+              unzip -p "$zip" "$cert_member" > "$dest/sat-certificate.json"
+              for basename in status.txt instance-metadata.json SHA256SUMS.txt kissat-version.txt; do
+                member="$(unzip -Z1 "$zip" | grep -E "(^|/)$basename$" | head -n1 || true)"
+                [ -z "$member" ] || unzip -p "$zip" "$member" > "$dest/$basename"
+              done
+            fi
+            printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "$artifact_id" "$size" "$digest" "$(sha256sum "$zip"|cut -d' ' -f1)" "$status" "$checker/$cert" >> "$work/results.tsv"
+          done < "$work/artifacts.tsv"
+
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          rows=[]
+          for line in Path('/tmp/uniform-trace-harvest/results.tsv').read_text().splitlines():
+              name,aid,size,digest,zip_sha,status,checks=line.split('\t')
+              checker,cert=checks.split('/')
+              m=int(name.rsplit('-',1)[1])
+              if status=='SAT_UNIFORM_TRACE_GADGET_VERIFIED' and cert=='true':
+                  classification='VERIFIED_UNIFORM_LOWER_BOUND_GADGET'
+              elif status=='UNSAT_PURE_TRACE_GADGET_DRAT_VERIFIED' and checker=='true':
+                  classification='PURE_TRACE_QUOTIENT_IMPOSSIBLE'
+              else:
+                  classification='INCONCLUSIVE'
+              rows.append({'m':m,'artifact_id':int(aid),'size_bytes':int(size),'github_digest':digest or None,'zip_sha256':zip_sha,'status':status,'drat_trim_verified':checker=='true','sat_certificate_verified':cert=='true','classification':classification})
+          rows.sort(key=lambda x:x['m'])
+          expected=set(range(4,10))
+          if {x['m'] for x in rows}!=expected: raise SystemExit('missing m values')
+          sats=[x for x in rows if x['classification']=='VERIFIED_UNIFORM_LOWER_BOUND_GADGET']
+          payload={'workflow_run_id':int(__import__('os').environ['UNIFORM_RUN_ID']),'slack':3,'searched_m':[4,5,6,7,8,9],'verified_gadgets':[x['m'] for x in sats],'strongest_uniform_consequence':(f"For all r>={min(x['m'] for x in sats)}, R_r^KG(3,3)>=3r+4" if sats else None),'results':rows}
+          root=Path('problems/math-0003-kneser-ramsey-lower-bound/experiments/uniform-trace-slack3')
+          (root/'SEARCH_RESULTS.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
+          lines=['# Uniform slack-three trace-gadget search','',f"**Verified gadget dimensions:** `{payload['verified_gadgets']}`",'',f"**Strongest consequence:** `{payload['strongest_uniform_consequence'] or 'none from this search'}`",'','| m | Status | Classification | DRAT | SAT certificate | Artifact |','|---:|---|---|---|---|---:|']
+          for x in rows:
+              lines.append(f"| {x['m']} | `{x['status']}` | `{x['classification']}` | {x['drat_trim_verified']} | {x['sat_certificate_verified']} | `{x['artifact_id']}` |")
+          (root/'SEARCH_RESULTS.md').write_text('\n'.join(lines)+'\n')
+          PY
+
+      - name: Commit preserved result
+        if: env.UNIFORM_RUN_ID != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add problems/math-0003-kneser-ramsey-lower-bound/experiments/uniform-trace-slack3
+          if git diff --cached --quiet; then
+            echo 'Uniform trace result unchanged'
+          else
+            git commit -m 'Record verified uniform trace-gadget search'
+            git push origin HEAD:research/math-0003-exact-r3
+          fi
+
+      - name: Comment research PR
+        if: env.UNIFORM_RUN_ID != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          summary='problems/math-0003-kneser-ramsey-lower-bound/experiments/uniform-trace-slack3/SEARCH_RESULTS.md'
+          { echo '<!-- math-0003-uniform-trace-harvest -->'; echo '## Uniform slack-three trace-gadget search'; echo; sed -n '1,12p' "$summary"; } > /tmp/comment.md
+          gh pr comment 11 --repo jiaxi1102/open-science-problems --body-file /tmp/comment.md
