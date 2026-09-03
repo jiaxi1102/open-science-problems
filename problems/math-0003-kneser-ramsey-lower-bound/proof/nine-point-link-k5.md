@@ -62,12 +62,15 @@ recomputes the unit-propagation closure, verifies the branch variable is
 unassigned, and verifies both children or the indicated conflicting clause.
 Every node must be reachable and the graph must be acyclic.
 
-The deterministic proof payload has hashes
+The canonical uncompressed proof payload has SHA-256
 
 ```text
-raw JSON:  30a35dcd239712ee87e4f65ddb5ab71a0965facf63d5595fd237ad95e9c6223d
-gzip:      f63cad91fd91a94f6fba484de031e6d480c0236f54709fd0ecd7ab5063c3f40b
+30a35dcd239712ee87e4f65ddb5ab71a0965facf63d5595fd237ad95e9c6223d
 ```
+
+The gzip file is only a transport representation. Its compressed bytes may
+vary across Python and zlib builds; verification always decompresses it and
+checks the canonical raw payload hash above.
 
 No external SAT solver or Python package is trusted by this verification.
 

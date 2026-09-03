@@ -35,7 +35,6 @@ Clause = tuple[int, ...]
 
 EXPECTED_CNF_SHA256 = "0db7c378b5fdf09326e5190ad6697e64b2a508ce39075864bcb3cd4918b84314"
 EXPECTED_RAW_CERTIFICATE_SHA256 = "30a35dcd239712ee87e4f65ddb5ab71a0965facf63d5595fd237ad95e9c6223d"
-EXPECTED_GZIP_CERTIFICATE_SHA256 = "f63cad91fd91a94f6fba484de031e6d480c0236f54709fd0ecd7ab5063c3f40b"
 EXPECTED_NODES = 9536
 EXPECTED_RECURSIVE_CALLS = 19073
 
@@ -238,7 +237,6 @@ def generate_certificate(
     ).encode()
     compressed = gzip.compress(raw, compresslevel=9, mtime=0)
     assert hashlib.sha256(raw).hexdigest() == EXPECTED_RAW_CERTIFICATE_SHA256
-    assert hashlib.sha256(compressed).hexdigest() == EXPECTED_GZIP_CERTIFICATE_SHA256
     return certificate, raw, compressed
 
 
@@ -254,7 +252,6 @@ def write_encoded_certificate(compressed: bytes, path: Path) -> None:
 def load_certificate(path: Path) -> dict[str, object]:
     encoded = "".join(path.read_text().split())
     compressed = base64.b64decode(encoded, validate=True)
-    assert hashlib.sha256(compressed).hexdigest() == EXPECTED_GZIP_CERTIFICATE_SHA256
     raw = gzip.decompress(compressed)
     assert hashlib.sha256(raw).hexdigest() == EXPECTED_RAW_CERTIFICATE_SHA256
     certificate = json.loads(raw)
