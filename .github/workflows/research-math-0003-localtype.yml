@@ -1,0 +1,107 @@
+name: research math-0003 local-type SAT
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - tools/kg12_localtype_sat.py
+      - tools/classify_k9_matching_colorings.py
+      - .github/workflows/research-math-0003-localtype.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve:
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: [matching, path]
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Reproduce local classification prerequisite
+        run: python tools/classify_k9_matching_colorings.py
+
+      - name: Generate strengthened exact branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH='${{ matrix.branch }}'
+          mkdir -p "localtype-$BRANCH"
+          python tools/kg12_localtype_sat.py --branch "$BRANCH" generate \
+            --cnf "localtype-$BRANCH/instance.cnf" \
+            --metadata "localtype-$BRANCH/instance-metadata.json" \
+            --map "localtype-$BRANCH/model-map.json"
+
+      - name: Install pinned Kissat binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH='${{ matrix.branch }}'
+          curl --fail --location --retry 3 \
+            https://github.com/arminbiere/kissat/releases/download/rel-4.0.4/kissat-4.0.4-linux-amd64.zip \
+            --output kissat.zip
+          echo '63282e5168ca040a2018edfba0726bf893a7a6bcdb1db87feb67857e2da697a7  kissat.zip' \
+            | sha256sum --check --strict
+          unzip -q kissat.zip -d kissat-dist
+          KISSAT=''
+          while IFS= read -r candidate; do
+            if file "$candidate" | grep -q 'ELF'; then
+              KISSAT="$candidate"
+              break
+            fi
+          done < <(find kissat-dist -type f -print | sort)
+          test -n "$KISSAT"
+          chmod +x "$KISSAT"
+          "$KISSAT" --version | tee "localtype-$BRANCH/kissat-version.txt"
+          echo "KISSAT=$GITHUB_WORKSPACE/$KISSAT" >> "$GITHUB_ENV"
+
+      - name: Solve and independently verify every SAT model
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH='${{ matrix.branch }}'
+          set +e
+          "$KISSAT" --time=1500 "localtype-$BRANCH/instance.cnf" \
+            > "localtype-$BRANCH/kissat.out" 2> "localtype-$BRANCH/kissat.err"
+          code=$?
+          set -e
+          printf '%s\n' "$code" > "localtype-$BRANCH/kissat.exit-code.txt"
+          if [ "$code" -eq 10 ]; then
+            python tools/kg12_localtype_sat.py --branch "$BRANCH" verify-model \
+              --solver-output "localtype-$BRANCH/kissat.out" \
+              --map "localtype-$BRANCH/model-map.json" \
+              --certificate "localtype-$BRANCH/sat-certificate.json"
+            printf 'SAT_FULL_KG12_MODEL_VERIFIED\n' > "localtype-$BRANCH/status.txt"
+          elif [ "$code" -eq 20 ]; then
+            printf 'UNSAT_GIVEN_LOCAL_CLASSIFICATION\n' > "localtype-$BRANCH/status.txt"
+          else
+            printf 'INCONCLUSIVE_EXIT_%s\n' "$code" > "localtype-$BRANCH/status.txt"
+            exit 1
+          fi
+          cat "localtype-$BRANCH/status.txt"
+
+      - name: Record checksums
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH='${{ matrix.branch }}'
+          find "localtype-$BRANCH" -maxdepth 1 -type f ! -name SHA256SUMS.txt \
+            -print0 | sort -z | xargs -0 sha256sum > "localtype-$BRANCH/SHA256SUMS.txt"
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: math-0003-localtype-${{ matrix.branch }}
+          path: localtype-${{ matrix.branch }}/
+          if-no-files-found: error
+          retention-days: 90
