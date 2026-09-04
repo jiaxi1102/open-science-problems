@@ -21,6 +21,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify the concrete sharpness witness independently
+        shell: bash
+        working-directory: problems/math-0002-kneser-fractional-cover/computations
+        run: |
+          python verify_sharpness_witness.py | tee sharpness-output.txt
+          grep -q '^PASS ' sharpness-output.txt
+          grep -q 'sharpness_witness=PASS' sharpness-output.txt
+          grep -q 'vertices=28' sharpness-output.txt
+          grep -q 'kneser_edges=210' sharpness-output.txt
+          grep -q 'triangles=420' sharpness-output.txt
+          grep -q 'red_independent_size=10' sharpness-output.txt
+          grep -q 'blue_independent_size=10' sharpness-output.txt
+
       - name: Run independent exact NAE-3-SAT verifier
         shell: bash
         working-directory: problems/math-0002-kneser-fractional-cover/computations
