@@ -19,7 +19,7 @@
 \newcommand{\Vol}{V}
 
 \title{Subcube isolation in hypercubes is radius-covering:\\
-a coding-theoretic dictionary, perfect-code obstruction, and a phase transition}
+perfect-code rigidity, a phase transition, and exponential additive gaps}
 \author{Working draft}
 \date{September 2026}
 
@@ -32,16 +32,27 @@ neighborhoods destroy every copy of $Q_k$ in $Q_n$ always equals
 $\gamma(Q_{n-k})$.  We identify the invariant exactly with a binary
 radius-covering-array number.  This corrects the provenance of the smallest
 counterexample, whose numerical value is established covering-array prior art,
-and yields structural consequences not visible in the graph formulation.  We
-prove a sharp fixed-codimension transition: the parameter is constant in
-codimensions at most three and grows logarithmically from codimension four
-onward.  We also derive a perfect-code projection obstruction.  For every
-binary Hamming length $m=2^t-1$, $t\ge 3$, it implies
-$\iota(Q_{m+k},Q_k)=\gamma(Q_m)$ exactly when $k=1$, giving infinitely many
-strict inequalities while the surviving forbidden cube is fixed at $Q_2$.
-The coordinate-copy theorem, the graph-to-array bridge, and the arithmetic core
-are accompanied by Lean verification; the full packing obstruction remains an
-explicit formalization target.
+and turns the graph question into a robust covering-code problem.  We prove a
+sharp fixed-codimension transition: the parameter is constant in codimensions
+at most three and grows logarithmically from codimension four onward.  A
+perfect-code projection obstruction gives, for every binary Hamming length
+$m=2^t-1$ with $t\ge3$,
+\[
+  \iota(Q_{m+k},Q_k)=\gamma(Q_m)\quad\Longleftrightarrow\quad k=1.
+\]
+We further prove the quantitative candidate bound
+\[
+ \iota(Q_{m+2},Q_2)-\gamma(Q_m)
+ \ge
+ \left\lceil
+ \frac{3\gamma(Q_m)m(m-3)}{4(m+2)(m+1)^4}
+ \right\rceil,
+\]
+so the additive failure is $\Omega(2^m/m^4)$ along the Hamming family.  The
+coordinate-copy theorem, the graph-to-array bridge, the perfect-projection
+metric core, and the quantitative algebra are accompanied by Lean
+verification; the final incidence aggregation remains an explicit
+end-to-end formalization gate.
 \end{abstract}
 
 \section{Introduction}
@@ -57,11 +68,17 @@ for every $0<k<n$.
 
 The key observation is that the projected domination condition occurring in
 this problem is not a new finite object: it is precisely a radius-covering
-array.  The translation makes the proposed equality
+array, also called a generalized surjective code.  The translation makes the
+proposed equality
 \[
-  \CAN_1(m,n,2)=\Kcov_2(m,1), \qquad m=n-k,
+  \CAN_1(m,m+k,2)=\Kcov_2(m,1), \qquad m=n-k,
 \]
 where $\Kcov_q(m,r)$ is the minimum size of a $q$-ary radius-$r$ covering code.
+The graph formulation therefore asks whether an optimal covering code always
+admits arbitrarily many columns while remaining a covering code after every
+prescribed puncturing.  It does not: perfect covering codes are rigid under
+this robust-extension requirement, and near-perfect extensions must pay a
+quantifiable overlap cost.
 
 \section{Coordinate copies of hypercubes}
 
@@ -132,7 +149,7 @@ Fix $m\ge1$ and $r\ge0$.  As $n\to\infty$,
 \]
 More explicitly, in the third regime every $M$-row array satisfies
 \[
-  n\le (m-1)2^M,
+  n\le (m-1)2^{M-1},
 \]
 and a random construction gives
 \[
@@ -149,11 +166,14 @@ If $m\le r$, one row covers every $m$-tuple.  If $r<m\le2r+1$, one row is
 insufficient, while the two constant complementary rows cover every target
 because $\min\{|a|,m-|a|\}\le\lfloor m/2\rfloor\le r$.
 
-Now assume $m\ge2r+2$.  Regard each column of an $M\times n$ array as a word in
-$\{0,1\}^M$.  If one column type occurred at least $m$ times, select those
-columns and a target with exactly $r+1$ ones.  Every projected row would be
-$0^m$ or $1^m$, at distance at least $r+1$ from the target.  Thus every one of
-the $2^M$ column types occurs at most $m-1$ times, proving the lower bound.
+Now assume $m\ge2r+2$.  Complement columns independently so that the first row
+is zero in every column.  This is an isometry in every projection and does not
+change the radius-covering property.  The normalized columns therefore have
+only $2^{M-1}$ possible types.  If one type occurred at least $m$ times,
+selecting those columns would make every projected row constant, either
+$0^m$ or $1^m$.  A target of weight $r+1$ is at distance at least $r+1$ from
+both constants because $m-(r+1)\ge r+1$.  Hence each type occurs at most
+$m-1$ times, giving $n\le(m-1)2^{M-1}$.
 
 For the upper bound, choose $M$ independent uniform binary rows.  For a fixed
 $m$-set of columns and a fixed target, the probability that no row lies within
@@ -161,7 +181,7 @@ radius $r$ is $(1-B_{m,r}/2^m)^M$.  A union bound over
 $2^m{n\choose m}$ choices is less than one for the displayed value of $M$.
 \end{proof}
 
-\begin{corollary}
+\begin{corollary}\label{cor:binary-phase}
 For fixed $m$,
 \[
 \iota(Q_n,Q_{n-m})=
@@ -172,7 +192,12 @@ For fixed $m$,
 \end{cases}
 \]
 Consequently, for every fixed $m\ge4$,
-$\iota(Q_n,Q_{n-m})/\gamma(Q_m)\to\infty$.
+$\iota(Q_n,Q_{n-m})/\gamma(Q_m)\to\infty$.  In particular,
+\[
+ n>(m-1)2^{\gamma(Q_m)-1}
+ \quad\Longrightarrow\quad
+ \iota(Q_n,Q_{n-m})>\gamma(Q_m).
+\]
 \end{corollary}
 
 \section{Perfect projections and robust extension}
@@ -212,7 +237,8 @@ bound contradicts the displayed strict inequality.
 
 \section{Hamming families}
 
-\begin{corollary}[Binary fixed-$Q_2$ family]\label{cor:binary-hamming}
+\begin{corollary}[Binary equality classification at Hamming codimensions]
+\label{cor:binary-hamming}
 Let $t\ge3$ and $m=2^t-1$.  For every $k\ge1$,
 \[
   \iota(Q_{m+k},Q_k)=\gamma(Q_m)
@@ -232,7 +258,7 @@ Monotonicity in the number of columns gives strict inequality for every
 $k\ge2$.
 \end{proof}
 
-\begin{corollary}[q-ary Hamming family]
+\begin{corollary}[q-ary Hamming family]\label{cor:qary-hamming}
 Let $q$ be a prime power, $t\ge3$, and
 $m=(q^t-1)/(q-1)$.  Then
 \[
@@ -247,6 +273,100 @@ The $q$-ary Hamming code is perfect, and
  =\frac{(q-1)^2m(m+1-2q)}2>0.
 \]
 \end{proof}
+
+\section{A quantitative Hamming-family gap}
+
+The perfect-code obstruction proves an excess of at least one row.  The next
+theorem shows that the absolute excess is in fact exponentially large.
+
+\begin{theorem}[Quantitative gap]\label{thm:quantitative-gap}
+Let $m=2^t-1$ with $t\ge3$, put
+\[
+ K=\gamma(Q_m)=\frac{2^m}{m+1},
+ \qquad
+ M=\iota(Q_{m+2},Q_2)=\CAN_1(m,m+2,2),
+\]
+and write $s=M-K$.  Then
+\[
+ s\ge
+ \left\lceil
+ \frac{3K m(m-3)}{4(m+2)(m+1)^4}
+ \right\rceil.
+\]
+Consequently
+\[
+ \iota(Q_{m+2},Q_2)-\gamma(Q_m)
+ =\Omega\!\left(\frac{2^m}{m^4}\right)
+\]
+along the binary Hamming lengths.
+\end{theorem}
+
+\begin{proof}
+Take an optimal $M\times(m+2)$ binary radius-one covering array with distinct
+rows.  For a deleted coordinate pair $D$ and $y\in Q_m$, let $c_D(y)$ be the
+number of projected rows within distance one of $y$.  Every target is covered,
+and double-counting incidences gives
+\[
+ \sum_y(c_D(y)-1)=(m+1)s.                                      \tag{1}
+\]
+For each $y$, there are $m+1$ possible projected centers and at most four full
+lifts of each center, so $c_D(y)\le4(m+1)$.  Therefore
+\[
+ \sum_y {c_D(y)\choose2}
+ \le 2(m+1)\sum_y(c_D(y)-1)
+ =2(m+1)^2s.                                                    \tag{2}
+\]
+Let $e_D$ count unordered row pairs at projected distance at most two.  Such a
+pair has at least two common radius-one neighbors, hence (2) implies
+\[
+ e_D\le(m+1)^2s.                                                \tag{3}
+\]
+Let $e$ count full row pairs at distance at most four.  Every such pair is
+counted in at least six of the numbers $e_D$: for distance four, delete any two
+of the four disagreements; the cases of smaller distance give at least as many
+choices.  Summing (3) over all deleted pairs yields
+\[
+ 6e\le {m+2\choose2}(m+1)^2s.                                  \tag{4}
+\]
+
+Now form a graph on the $M$ rows, joining pairs at distance at most four.  An
+independent set is a length-$(m+2)$ binary code of minimum distance at least
+five.  Radius-two sphere packing gives
+\[
+ \alpha(G)\le \frac{2^{m+2}}{V},
+ \qquad
+ V=1+(m+2)+{m+2\choose2}.
+\]
+Caro--Wei and Cauchy--Schwarz give
+\[
+ \alpha(G)\ge\frac{M^2}{M+2e},
+\]
+so
+\[
+ e\ge\frac12\left(\frac{M^2V}{2^{m+2}}-M\right).
+\]
+The right-hand side is increasing for $M\ge K$, and
+\[
+ \frac{KV}{2^{m+2}}-1=\frac{m(m-3)}{8(m+1)}.
+\]
+Thus
+\[
+ e\ge\frac{K m(m-3)}{16(m+1)}.                                \tag{5}
+\]
+Combining (4) and (5), and using
+${m+2\choose2}=(m+2)(m+1)/2$, gives
+\[
+ s\ge\frac{3K m(m-3)}{4(m+2)(m+1)^4}.
+\]
+Since $s$ is integral, taking the ceiling completes the proof.
+\end{proof}
+
+\begin{remark}
+The bound gives excess at least $1$ for $m=7$ and $15$, at least $1263$ for
+$m=31$, and at least $374{,}653{,}301{,}052$ for $m=63$.  The $m=7$ instance
+is weaker than the published numerical interval
+$21\le\CAN_1(7,9,2)\le24$; the point is the uniform asymptotic separation.
+\end{remark}
 
 \section{The smallest illustration and provenance}
 
@@ -267,20 +387,35 @@ auditing in graph language.
 
 The accompanying Lean development verifies the coordinate-copy theorem, the
 exact distance-to-face identity, the equivalence between face hitting and the
-radius-covering-array predicate, and the arithmetic core of the binary Hamming
-obstruction.  The finite $(6,2)$ certificate is complete, but its exhaustive
-four-row lower bound uses \texttt{native\_decide} with the generated axiom
-reported explicitly.  A full formal proof of Theorem~\ref{thm:perfect},
-including the general Hamming packing count, remains a stated gate rather than
-a completed claim.
+radius-covering-array predicate, exact-cover disjointness, projected minimum
+distance, puncturing-to-full-distance lifting, and the abstract Hamming packing
+step.  It also checks the algebraic components of
+Theorem~\ref{thm:quantitative-gap}: the multiplicity estimate, deletion-pair
+rescaling, Caro--Wei rearrangement, monotonicity, final inequality combination,
+and the exact $m=7,15,31,63$ arithmetic.
 
-\section{Open directions}
+Two boundaries remain explicit.  First, the Hamming-ball cardinality formulas
+and the full incidence sums in Theorem~\ref{thm:quantitative-gap} have not yet
+been assembled into one end-to-end Lean theorem.  Second, the finite $(6,2)$
+certificate's exhaustive four-row lower bound uses \texttt{native\_decide},
+with the generated axiom reported explicitly.  Neither boundary affects the
+human proofs, but both must be closed before describing the complete paper as
+fully formally verified.
 
-The dictionary converts several graph questions into coding/design questions.
-Natural next problems are to determine sharp logarithmic constants for fixed
-$m,r$, characterize all pairs for which equality with a covering-code number
-survives, and study analogous isolation parameters in Hamming graphs and other
-Cartesian products.
+\section{Novelty boundary and open directions}
+
+The value $\CAN_1(4,6,2)=5$ is prior art.  The candidate-new contribution is
+the graph--coding dictionary together with the perfect-projection obstruction,
+the Hamming-family equality classification, and the quantitative gap theorem.
+Searches through radius-covering arrays, generalized surjective codes, perfect
+codes, puncturing, and robust projections have not located these statements,
+but that does not establish priority.  Independent review by researchers in
+covering arrays, coding theory, and domination theory is required.
+
+The dictionary also exposes further problems: determine sharp logarithmic
+constants for fixed $m,r$; improve the polynomial loss in the quantitative gap;
+characterize equality outside perfect-code lengths; and extend the theory to
+Hamming graphs and other Cartesian products.
 
 \begin{thebibliography}{9}
 
@@ -293,6 +428,16 @@ B.~Bre\v{s}ar and D.~F. Rall,
 C.~J. Colbourn, G.~K\'eri, P.~P. Rivas Soriano, and J.-C. Schlage-Puchta,
 \newblock Covering and radius-covering arrays: Constructions and classification,
 \newblock \emph{Discrete Applied Mathematics} 158 (2010), 1158--1180.
+
+\bibitem{QuistorffSchlagePuchta}
+J.~Quistorff and J.-C. Schlage-Puchta,
+\newblock On generalized surjective codes,
+\newblock preprint, 2006.
+
+\bibitem{CohenEtAl}
+G.~Cohen, I.~Honkala, S.~Litsyn, and A.~Lobstein,
+\newblock \emph{Covering Codes},
+\newblock North-Holland, 1997.
 
 \end{thebibliography}
 
