@@ -1,10 +1,28 @@
 # Independent exact verification
 
-This directory contains a verifier independent of the Lean bit-vector encoding.
-It reconstructs `KG(8,2)` from first principles and checks the strengthened
-finite statement used in the proof.
+This directory contains verifiers independent of the Lean bit-vector encoding.
+They reconstruct `KG(8,2)` from first principles and check both sides of the
+sharp finite theorem.
 
-## Statement checked
+## Sharpness witness
+
+`verify_sharpness_witness.py` checks the explicit red-blue coloring committed
+in the formal generator. It verifies:
+
+- 28 vertices, 210 Kneser edges, and 420 Kneser triangles;
+- no triangle is monochromatic;
+- the displayed red-independent set has size 10 and all induced edges blue;
+- the displayed blue-independent set has size 10 and all induced edges red.
+
+Run:
+
+```bash
+python verify_sharpness_witness.py
+```
+
+The expected output starts with `PASS`.
+
+## 11-set obstruction
 
 There is no red-blue colouring of the 210 edges of `KG(8,2)` such that:
 
@@ -30,7 +48,7 @@ The program itself generates the stabilizer, verifies the orbit decomposition,
 generates every second-set candidate, and then proves each representative
 NAE-3-SAT instance unsatisfiable.
 
-## Reproduce
+## Reproduce the obstruction
 
 ```bash
 g++ -O3 -std=c++20 -Wall -Wextra -pedantic \
@@ -61,4 +79,4 @@ disjoint ranges returned UNSAT:
 | 60-77 | 39,312 | 31,416 | 7,359,496 |
 
 These discovery runs are supporting reproduction evidence. The committed
-program and the Lean theorem are the maintained verifiers.
+programs and the Lean theorems are the maintained verifiers.
