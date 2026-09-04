@@ -1,0 +1,35 @@
+name: Build pinned Kissat artifact
+
+on:
+  push:
+    branches:
+      - experiment/math-0002-beta-14-5
+    paths:
+      - .github/workflows/build-kissat-artifact.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Kissat 4.0.4
+        shell: bash
+        run: |
+          git clone --depth 1 --branch rel-4.0.4 https://github.com/arminbiere/kissat.git /tmp/kissat
+          cd /tmp/kissat
+          ./configure
+          make -C build -j2
+          ./build/kissat --version
+          cp ./build/kissat "$GITHUB_WORKSPACE/kissat"
+          sha256sum "$GITHUB_WORKSPACE/kissat" > "$GITHUB_WORKSPACE/kissat.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kissat-4.0.4-linux-x86_64
+          path: |
+            kissat
+            kissat.sha256
+          retention-days: 14
