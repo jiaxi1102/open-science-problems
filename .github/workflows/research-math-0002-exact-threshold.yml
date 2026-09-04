@@ -106,8 +106,15 @@ jobs:
 
           if [[ "$code" -eq 20 ]]; then
             test -s "$proof"
+            set +e
             "$DRAT_TRIM" "$cnf" "$proof" \
               | tee "$result/drat-trim.out"
+            checker_code=${PIPESTATUS[0]}
+            set -e
+            echo "$checker_code" > "$result/drat-trim-exit-code.txt"
+            # drat-trim reports a verified refutation with exit code 1 on this
+            # pinned revision, so the semantic success line—not shell zero—is
+            # the fail-closed acceptance condition.
             grep -qx 's VERIFIED' "$result/drat-trim.out"
             status=UNSAT_DRAT_VERIFIED
           elif [[ "$code" -eq 10 ]]; then
@@ -148,8 +155,6 @@ jobs:
           PY
           echo "status=$status" >> "$GITHUB_OUTPUT"
 
-          # Timeouts and malformed solver outcomes are evidence only, not a
-          # successful certificate job.
           [[ "$status" == UNSAT_DRAT_VERIFIED || "$status" == SAT_MODEL_VERIFIED ]]
 
       - name: Summarize certificate status
