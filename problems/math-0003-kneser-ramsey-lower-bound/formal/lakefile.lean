@@ -8,4 +8,4 @@ require mathlib from git
 
 @[default_target]
 lean_lib KneserFivePoint where
-  roots := #[`KneserFivePoint, `KneserFivePoint.LowerBound]
+  roots := #[`KneserFivePoint, `KneserFivePoint.LowerBound, `KneserFivePoint.Asymmetric]
