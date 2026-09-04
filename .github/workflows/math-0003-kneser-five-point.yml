@@ -34,16 +34,16 @@ jobs:
         shell: bash
         working-directory: problems/math-0003-kneser-ramsey-lower-bound/formal
         run: |
-          if grep -nE '\b(sorry|admit)\b' KneserFivePoint.lean; then
+          if grep -RInE --include='*.lean' '\b(sorry|admit)\b' .; then
             echo "Unfinished proof marker found"
             exit 1
           fi
-          if grep -nE '^[[:space:]]*axiom[[:space:]]' KneserFivePoint.lean; then
+          if grep -RInE --include='*.lean' '^[[:space:]]*axiom[[:space:]]' .; then
             echo "Hand-written axiom found"
             exit 1
           fi
 
-      - name: Build Lean finite gadget
+      - name: Build end-to-end Lean lower bound
         uses: leanprover/lean-action@v1
         env:
           LEAN_NUM_THREADS: '1'
@@ -53,4 +53,6 @@ jobs:
           test: false
           lint: false
           leanchecker: false
-          axiom-audit: false
+          axiom-audit: true
+          axiom-audit-root: KneserFivePoint
+          axiom-audit-allow: propext,Classical.choice,Quot.sound
