@@ -45,7 +45,7 @@ def distinguishedEmbedding (r : Nat) (hr : 1 ≤ r) : Fin 5 ↪ Fin (3 * r + 2) 
   inj' := by
     intro i j h
     apply Fin.ext
-    exact congrArg Fin.val h
+    simpa using congrArg (fun x : Fin (3 * r + 2) => x.val) h
 
 /-- The trace of a Kneser vertex on the five distinguished points. -/
 def traceSet {r : Nat} (hr : 1 ≤ r) (A : KneserVertex (3 * r + 2) r) :
@@ -87,7 +87,7 @@ theorem traceSet_disjoint {r : Nat} (hr : 1 ≤ r)
     simpa [traceSet] using hiA
   have hiB' : distinguishedEmbedding r hr i ∈ B.1 := by
     simpa [traceSet] using hiB
-  exact (Finset.disjoint_left.mp hAB) _ hiA' hiB'
+  exact (Finset.disjoint_left.mp hAB) hiA' hiB'
 
 /--
 Three pairwise-disjoint `r`-sets in a `(3r+2)`-point ground set cover at least
