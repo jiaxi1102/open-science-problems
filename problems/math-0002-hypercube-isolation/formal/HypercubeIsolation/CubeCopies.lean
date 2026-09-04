@@ -13,7 +13,7 @@ def flip {n : ℕ} (x : CubeVertex n) (i : Fin n) : CubeVertex n := x ∆ {i}
 
 @[simp] theorem flip_flip {n : ℕ} (x : CubeVertex n) (i : Fin n) :
     flip (flip x i) i = x := by
-  simp [flip, symmDiff_assoc]
+  simp [flip]
 
 theorem flip_comm {n : ℕ} (x : CubeVertex n) (i j : Fin n) :
     flip (flip x i) j = flip (flip x j) i := by
@@ -49,7 +49,7 @@ theorem flip_eq_insert_of_notMem {n : ℕ} {x : CubeVertex n} {i : Fin n}
 def Adjacent {n : ℕ} (x y : CubeVertex n) : Prop := ∃ i, y = flip x i
 
 /--
-An injective edge-preserving map from `Q_k` into `Q_n`.  This is exactly the
+An injective edge-preserving map from `Q_k` into `Q_n`. This is exactly the
 data supplied by a graph copy of `Q_k` in `Q_n`: every domain edge obtained by
 toggling one coordinate maps to an ambient edge obtained by toggling one
 coordinate.
@@ -130,7 +130,8 @@ theorem label_flip (x : CubeVertex k) (i j : Fin k) :
     let q := F.label (flip x i) j
     let r := F.label (flip x j) i
     have hps : p ≠ s := by
-      exact (F.label_injective_at x) hij
+      intro hpsEq
+      exact hij ((F.label_injective_at x) hpsEq)
     have hpq : p ≠ q := by
       intro hpqeq
       have hrev : F.label (flip x i) i = p := by
@@ -144,12 +145,18 @@ theorem label_flip (x : CubeVertex k) (i j : Fin k) :
     have hsquare : flip (flip (F.toFun x) p) q = flip (flip (F.toFun x) s) r := by
       calc
         flip (flip (F.toFun x) p) q = F.toFun (flip (flip x i) j) := by
-          rw [F.map_flip_label x i]
+          dsimp [p, q]
+          rw [← F.map_flip_label x i]
           exact (F.map_flip_label (flip x i) j).symm
         _ = F.toFun (flip (flip x j) i) := by rw [flip_comm]
         _ = flip (flip (F.toFun x) s) r := by
-          rw [F.map_flip_label x j]
-          exact F.map_flip_label (flip x j) i
+          dsimp [s, r]
+          calc
+            F.toFun (flip (flip x j) i) =
+                flip (F.toFun (flip x j)) (F.label (flip x j) i) :=
+              F.map_flip_label (flip x j) i
+            _ = flip (flip (F.toFun x) (F.label x j))
+                (F.label (flip x j) i) := by rw [F.map_flip_label x j]
     have hop := opposite_labels_of_square hpq hps hsquare
     exact hop.1.symm
 
@@ -185,18 +192,27 @@ noncomputable def coordinateMap (x : CubeVertex k) : CubeVertex n :=
 theorem toFun_eq_coordinateMap (x : CubeVertex k) :
     F.toFun x = F.coordinateMap x := by
   induction x using Finset.induction_on with
-  | empty => simp [coordinateMap]
+  | empty =>
+      ext i
+      simp [coordinateMap, Finset.mem_symmDiff]
   | @insert a x ha ih =>
       have ha_image : F.axis a ∉ x.map F.axis := by
         simp [ha]
+      have htoggle : x.map F.axis ∆ {F.axis a} = insert (F.axis a) (x.map F.axis) := by
+        simpa [flip] using
+          (flip_eq_insert_of_notMem (x := x.map F.axis) (i := F.axis a) ha_image)
       calc
         F.toFun (insert a x) = F.toFun (flip x a) := by
           rw [flip_eq_insert_of_notMem ha]
         _ = flip (F.toFun x) (F.axis a) := F.map_flip_axis x a
         _ = flip (F.coordinateMap x) (F.axis a) := by rw [ih]
+        _ = (F.toFun ∅ ∆ x.map F.axis) ∆ {F.axis a} := rfl
+        _ = F.toFun ∅ ∆ (x.map F.axis ∆ {F.axis a}) := by
+          rw [symmDiff_assoc]
+        _ = F.toFun ∅ ∆ insert (F.axis a) (x.map F.axis) := by
+          rw [htoggle]
         _ = F.coordinateMap (insert a x) := by
-          simp [coordinateMap, flip, Finset.map_insert, symmDiff_assoc,
-            Finset.symmDiff_eq_union, ha_image]
+          simp [coordinateMap]
 
 /--
 Coordinate-copy theorem: the image of every abstract graph copy of `Q_k` in
