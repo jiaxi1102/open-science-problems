@@ -1,13 +1,13 @@
-name: math-0002 Kneser cover Lean verification
+name: math-0002 Kneser cover verification
 
 on:
   push:
     paths:
-      - problems/math-0002-kneser-fractional-cover/formal/**
+      - problems/math-0002-kneser-fractional-cover/**
       - .github/workflows/math-0002-kneser-cover.yml
   pull_request:
     paths:
-      - problems/math-0002-kneser-fractional-cover/formal/**
+      - problems/math-0002-kneser-fractional-cover/**
       - .github/workflows/math-0002-kneser-cover.yml
   workflow_dispatch:
 
@@ -17,17 +17,32 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate the explicit finite certificate
+      - name: Run independent exact NAE-3-SAT verifier
+        shell: bash
+        working-directory: problems/math-0002-kneser-fractional-cover/computations
+        run: |
+          g++ -O3 -std=c++20 -Wall -Wextra -pedantic verify_11_obstruction.cpp -o verify_11_obstruction
+          ./verify_11_obstruction | tee verification-output.txt
+          grep -q '^UNSAT ' verification-output.txt
+          grep -q 'vertices=28' verification-output.txt
+          grep -q 'kneser_edges=210' verification-output.txt
+          grep -q 'triangles=420' verification-output.txt
+          grep -q 'A_total=78' verification-output.txt
+          grep -q 'A_orbits=4' verification-output.txt
+          grep -q 'B_total=2184' verification-output.txt
+          grep -q 'tested_orbit_pairs=8736' verification-output.txt
+
+      - name: Generate the explicit Lean certificate
         shell: bash
         working-directory: problems/math-0002-kneser-fractional-cover/formal
         run: |
           python generate_lean.py
           python finalize_lean.py
-          echo "143b3fdcb75423e419eb10d1ce7c8f9fbc700f22a0cd4d55d65e27950c0667e9  KneserCover.lean" | sha256sum -c -
+          echo "1f3421d0b1e03d35a588faafe0868ffac34254cce0a8e1cc93c9777cbd7215f5  KneserCover.lean" | sha256sum -c -
 
       - name: Reject unfinished or hand-written axiomatic shortcuts
         shell: bash
