@@ -1,26 +1,75 @@
 # Novelty and prior-art record
 
-**Problem:** `math-0002` — fractional \(5/2\)-cover number of \(KG(8,2)\)  
-**Status:** `search-incomplete`  
-**Last updated:** 31 August 2026
+**Problem:** `math-0002` — fractional covers of \(KG(8,2)\)  
+**Status:** `targeted-search-negative; confirmation pending`  
+**Last updated:** 4 September 2026
 
 ## Original source
 
-Gujgiczer, Marits, and Ozeki, arXiv:2607.12353v1 (July 2026), explicitly ask whether \(KG(8,2)\) can be covered by two graphs of fractional chromatic number at most \(5/2\). The present candidate result answers that question negatively and proposes the exact cover number three.
+Gujgiczer, Marits, and Ozeki, *Cover numbers by graph families bounded by
+certain graph parameters*, arXiv:2607.12353v1, submitted 14 July 2026.
 
 Stable source: https://arxiv.org/abs/2607.12353
 
-## What has been established about novelty
+The paper explicitly asks whether \(KG(8,2)\) can be covered by two graphs of
+fractional chromatic number at most \(5/2\). It separately asks for the exact
+smallest fractional threshold \(\beta\) permitting a two-cover and records only
 
-- The source itself labels the two-cover case for \(KG(8,2)\) as open as of its July 2026 version.
-- No claim is made here that every later preprint, journal article, conference proceeding, thesis, or private communication has been checked.
-- The source authors have not yet confirmed whether they know of an independent or concurrent resolution.
+\[
+2<\beta\le3.
+\]
+
+## Candidate contributions in this repository
+
+1. A negative answer to the \(5/2\) two-cover question, equivalently
+
+   \[
+   c_{\mathcal C_{5/2}}(KG(8,2))=3.
+   \]
+
+2. The stronger quantitative bound
+
+   \[
+   \frac{14}{5}\le\beta_2(KG(8,2))\le3.
+   \]
+
+3. The complete \(5/2\)-threshold cutoff for the family \(KG(n,2)\): the
+   source construction for \(n=7\), combined with the proposed obstruction at
+   \(n=8\), gives a two-cover exactly when \(n\le7\).
+
+## Searches completed
+
+Targeted searches were repeated on 4 September 2026 using combinations of:
+
+- the exact source title and author names;
+- `KG(8,2)` with `fractional chromatic`, `fractional cover`, `5/2`, and
+  `14/5`;
+- the exact-threshold wording from the paper; and
+- GitHub code/repository searches for the same identifiers.
+
+The searches found the July 2026 source and unrelated Kneser/fractional-coloring
+papers, but no later paper or public code claiming either the negative
+\(5/2\) result or the \(14/5\) lower bound. The arXiv record inspected on that
+date still exposed version 1 only.
+
+This is evidence against obvious prior publication, not a proof of priority.
+Search-engine indexing can lag, private or in-progress work is invisible, and
+not every journal/citation database has been exhaustively checked.
 
 ## Required checks before a priority claim
 
-1. Search arXiv, MathSciNet, zbMATH, Google Scholar, and citation indexes for `KG(8,2)`, Kneser graph covers, fractional chromatic covers, and the source paper's title/authors.
-2. Inspect later versions of arXiv:2607.12353 and all citing or closely related papers.
-3. Contact the source authors with the precise theorem statement, proof reduction, and Lean certificate.
-4. Obtain independent subject-matter review of both the human argument and the finite encoding.
+1. Search MathSciNet, zbMATH, Google Scholar, and citation indexes using an
+   institutional account.
+2. Inspect any later versions and all citing papers for arXiv:2607.12353.
+3. Send the exact theorem, proof reduction, Lean commit, and independent
+   verifier to the source authors and ask about known concurrent work.
+4. Obtain independent review from a graph theorist familiar with fractional
+   coloring and Kneser graphs.
+5. Preserve dated commits and verification logs while avoiding public claims
+   stronger than `candidate new result` until those checks are complete.
 
-Until these checks are complete, the appropriate wording is **candidate new result** or **proposed resolution**, not an established first proof.
+## Wording policy
+
+Until author or independent expert confirmation, use **proposed resolution**
+for the \(5/2\) question and **candidate new lower bound** for \(14/5\). Do not
+call either result the established first proof or a published theorem.
