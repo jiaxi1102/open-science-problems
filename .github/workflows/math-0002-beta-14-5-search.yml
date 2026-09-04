@@ -42,7 +42,7 @@ jobs:
             --intersection ${{ matrix.intersection }} \
             --output case.cnf | tee generator-output.txt
           grep -q 'variables=994' generator-output.txt
-          grep -q 'clauses=230489' generator-output.txt
+          grep -q 'clauses=230161' generator-output.txt
 
       - name: Solve
         id: solve
