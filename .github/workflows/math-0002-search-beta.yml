@@ -1,0 +1,56 @@
+name: math-0002 exact 14/5 construction search
+
+on:
+  push:
+    branches:
+      - math-0002-strengthen-beta-lower-bound
+    paths:
+      - problems/math-0002-kneser-fractional-cover/experiments/search_two_kneser_homomorphisms.py
+      - .github/workflows/math-0002-search-beta.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        intersection: [0, 1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install exact SAT solver
+        run: python -m pip install --disable-pip-version-check python-sat
+
+      - name: Search the canonical symmetry case
+        shell: bash
+        working-directory: problems/math-0002-kneser-fractional-cover/experiments
+        run: |
+          set +e
+          python search_two_kneser_homomorphisms.py \
+            --p 14 --q 5 \
+            --intersection "${{ matrix.intersection }}" \
+            --output "two_kg_14_5_intersection_${{ matrix.intersection }}.json" \
+            2>&1 | tee "search_intersection_${{ matrix.intersection }}.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          case "$rc" in
+            10) echo "SAT certificate found and independently validated" ;;
+            20) echo "UNSAT for this direct KG(14,5) symmetry case" ;;
+            *)  echo "search failed with exit code $rc"; exit "$rc" ;;
+          esac
+
+      - name: Upload search record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kg-14-5-intersection-${{ matrix.intersection }}
+          path: |
+            problems/math-0002-kneser-fractional-cover/experiments/search_intersection_${{ matrix.intersection }}.log
+            problems/math-0002-kneser-fractional-cover/experiments/two_kg_14_5_intersection_${{ matrix.intersection }}.json
+          if-no-files-found: warn
