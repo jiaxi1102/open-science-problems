@@ -1,89 +1,156 @@
-# Fractional \(5/2\)-cover number of \(KG(8,2)\)
+# Fractional covers of \(KG(8,2)\)
 
 **ID:** `math-0002`  
 **Field:** graph theory / fractional coloring / Kneser graphs  
-**Original source:** Gujgiczer–Marits–Ozeki, arXiv:2607.12353v1 (July 2026)  
-**Problem status:** `proposed-proof`  
-**Formal verification:** `partial-theorem-verified`  
-**Novelty:** `search-incomplete`  
+**Original source:** Gujgiczer–Marits–Ozeki, arXiv:2607.12353v1 (14 July 2026)  
+**Problem status:** `proposed-proof + new-bound`  
+**Formal verification:** `finite-core-theorem-verified`  
+**Novelty:** `no-prior-result-found; author confirmation pending`  
 **External review:** `none`
 
-## Original problem
+## Source questions
 
-Let \(\mathcal C_{5/2}=\{H:\chi_f(H)\le 5/2\}\), and let \(c_{\mathcal C_{5/2}}(G)\) be the least number of members of this class whose edge sets cover \(E(G)\). The source paper asks whether the Kneser graph \(KG(8,2)\) can be covered by two graphs in \(\mathcal C_{5/2}\).
-
-The 28 vertices of \(KG(8,2)\) are the two-element subsets of an eight-element set; two vertices are adjacent when the corresponding pairs are disjoint.
-
-## Why it matters
-
-The question separates ordinary triangle-free covers from covers controlled by fractional chromatic number. The source paper gives a two-graph triangle-free cover but leaves open whether the stronger fractional threshold \(5/2\) can still be achieved. Resolving the first unknown Kneser instance also determines the full cutoff for the family \(KG(n,2)\) at this threshold.
-
-## Result
-
-The candidate theorem is
+For \(\beta\ge2\), let
 
 \[
-c_{\mathcal C_{5/2}}(KG(8,2))=3.
+\mathcal C_\beta=\{H:\chi_f(H)\le\beta\},
 \]
 
-Thus the proposed answer to the original two-cover question is **no**. Combined with the source paper's construction for \(KG(7,2)\), the argument gives
+and let \(c_{\mathcal C_\beta}(G)\) be the least number of members of this
+class whose edge sets cover \(E(G)\). The source paper asks:
+
+1. whether \(KG(8,2)\) can be covered by two members of
+   \(\mathcal C_{5/2}\); and
+2. for the smallest threshold
+
+   \[
+   \beta_2(KG(8,2)):=
+   \min\{\beta:c_{\mathcal C_\beta}(KG(8,2))\le2\}.
+   \]
+
+The paper records only \(2<\beta_2(KG(8,2))\le3\).
+
+## Results
+
+The proposed answer to the first question is exact:
 
 \[
-KG(n,2)\text{ has a two-graph }5/2\text{-fractional cover}\iff n\le 7.
+\boxed{c_{\mathcal C_{5/2}}(KG(8,2))=3.}
 \]
 
-The finite core proves the stronger Ramsey-type statement that every red–blue coloring of \(E(KG(8,2))\) without a monochromatic triangle has at least one color graph with independence number at most 11. Consequently, the two-cover fractional threshold is at least \(28/11>5/2\).
+The strengthened finite theorem also gives a new quantitative answer to the
+second question:
 
-## Argument / evidence
+\[
+\boxed{\frac{14}{5}\le\beta_2(KG(8,2))\le3.}
+\]
 
-The upper bound of three uses an explicit proper six-coloring of \(KG(8,2)\), three-bit codes for the six colors, and one bipartite covering graph per bit.
+The lower bound follows from this Ramsey-type statement:
 
-For the lower bound, a hypothetical two-cover can be reduced to a red–blue edge partition. Since \(\chi_f(K_3)=3\), both color graphs are triangle-free. The inequality \(\chi_f(H)\ge |V(H)|/\alpha(H)\) forces a 12-vertex independent set in each color graph.
+> Every red-blue coloring of \(E(KG(8,2))\) either contains a monochromatic
+> triangle or has a color graph with independence number at most ten.
 
-Viewing the vertices of \(KG(8,2)\) as the edges of \(K_8\), each such 12-set is a 12-edge family with matching number at most two. A Tutte–Berge argument places every such family inside a 13-edge double star. The remaining finite obstruction—two oppositely monochromatic 12-subsets of double stars in a triangle-free red–blue coloring—is checked exhaustively in Lean after fixing one double-star core by the transitive \(S_8\)-action.
+Indeed, a monochromatic triangle has fractional chromatic number three. In
+the other case, the standard inequality
+\(\chi_f(H)\ge |V(H)|/\alpha(H)\) gives
+
+\[
+\chi_f(H)\ge\frac{28}{10}=\frac{14}{5}.
+\]
+
+This improves the earlier internal bound \(28/11\) and rules out every
+threshold strictly below \(14/5\), not just \(5/2\).
+
+## Proof architecture
+
+The 28 vertices of \(KG(8,2)\) are the edges of \(K_8\), with adjacency given
+by disjointness.
+
+1. A hypothetical two-cover may be reduced to a red-blue edge partition.
+2. If both color graphs are triangle-free and both have independent
+   11-sets, those sets become 11-edge subgraphs of \(K_8\) with matching
+   number at most two.
+3. Every 11-edge graph on eight vertices with matching number at most two is
+   contained in a 13-edge double star. This follows from Tutte-Berge; it is
+   also verified exhaustively in Lean.
+4. The remaining finite obstruction—oppositely monochromatic 11-subsets of
+   double stars in a triangle-free coloring—is impossible. Lean verifies the
+   complete fixed-core statement, and an independent C++ DPLL verifier checks
+   all 170,352 candidate pairs.
+5. Three bipartite graphs cover \(KG(8,2)\): use an explicit proper
+   six-coloring, assign the six colors distinct three-bit strings, and take
+   one cut graph per bit.
 
 See [`proof.md`](proof.md) for the complete written argument.
 
-## Formalization boundary
+## Formal and independent verification
 
-Lean verifies the two delicate finite statements:
+The generated Lean 4 file proves:
 
-- `matchingFree12_is_doubleStar`: every matching-free 12-subset of the 28 edges of \(K_8\) is contained in a double star;
-- `core01_obstruction`: after fixing one core by symmetry, no choice of the second core, the two 12-subsets, and the 210 edge colors satisfies all required constraints.
+- `matchingFree11_is_doubleStar`; and
+- `core01_obstruction_11`.
 
-The outer mathematical bridge is currently human-checked rather than formalized end to end. It includes fractional-chromatic monotonicity, \(\chi_f(H)\ge |V|/\alpha\), the reduction from a cover to an edge partition, Tutte–Berge, the symmetry reduction, and the explicit three-graph upper-bound construction.
+The independent verifier enumerates all
+\(\binom{13}{11}\cdot28\binom{13}{11}=170{,}352\) fixed-core candidate pairs
+and performs a complete not-all-equal SAT search on the 420 triangles of
+\(KG(8,2)\). It returns `UNSAT` after 40,027,816 deterministic DPLL nodes.
 
-The finite proofs use Lean's `bv_decide`. In Lean 4.33.1 this includes native reflective computation, so the compiler/native evaluator is part of the trusted computing base. There are no `sorry`, `admit`, or hand-written `axiom` declarations.
-
-## Reproduce
+Reproduce with:
 
 ```bash
-cd problems/math-0002-kneser-fractional-cover/formal
+cd problems/math-0002-kneser-fractional-cover
+
+g++ -O3 -std=c++20 verification/nae_independence_obstruction.cpp \
+  -o /tmp/nae_independence_obstruction
+/tmp/nae_independence_obstruction
+
+cd formal
 python generate_lean.py
-python finalize_lean.py
 lake build
 ```
 
 Pinned environment:
 
-- Lean 4.33.1
-- Lake 5.0.0
-- generated `KneserCover.lean` SHA-256: `143b3fdcb75423e419eb10d1ce7c8f9fbc700f22a0cd4d55d65e27950c0667e9`
+- Lean 4.33.1;
+- Lake 5.0.0;
+- generated `KneserCover.lean` SHA-256:
+  `2a51c43c1f9ec8e0f2bbfa76cf7333dc1dcc53ded85a67ff5212a863647b68a9`.
 
-The successful CI run and trust-boundary details are recorded in [`verification-record.md`](verification-record.md).
+The finite Lean theorems use native `bv_decide`; the compiler/native evaluator
+is therefore part of the documented trust boundary. There are no `sorry`,
+`admit`, or hand-written `axiom` declarations.
 
-## Novelty / prior art
+## Formalization boundary
 
-The July 2026 source explicitly states the two-cover question as open. A comprehensive post-publication literature and citation search has not yet been completed, and the source authors have not yet confirmed priority. See [`references/NOVELTY.md`](references/NOVELTY.md).
+Lean verifies the two delicate finite claims. The outer bridge remains a
+human proof: monotonicity under edge deletion, the fractional bound
+\(\chi_f\ge |V|/\alpha\), the Tutte-Berge derivation, the relabeling of the
+first double-star core, and the explicit three-graph construction have not yet
+all been encoded in a general graph library.
 
-## Risks and unresolved items
+## Additional corollary
 
-The strongest remaining risks are a mismatch between the encoded finite obstruction and the intended graph-theoretic reduction, an overlooked issue in the human outer argument, or an independent resolution appearing after the cited preprint. Green CI establishes the generated finite Lean theorems under the stated trust model; it does not establish novelty or complete formal equivalence to the literature question.
+The source paper gives a two-graph \(5/2\)-fractional cover of \(KG(7,2)\).
+Together with induced-subgraph monotonicity, the proposed result yields
 
-## Next gates
+\[
+KG(n,2)\text{ has a two-graph }5/2\text{-fractional cover}
+\iff n\le7.
+\]
 
-1. Independent graph-theory audit of the reduction and the generated enumeration.
-2. Reproduction of the Lean build on a separate machine.
-3. Comprehensive novelty search and contact with the source authors.
-4. End-to-end Lean formalization of the outer fractional-coloring and symmetry bridge.
-5. Prepare a concise manuscript only after the preceding gates are documented.
+## Ongoing exact-threshold search
+
+An exact SAT experiment is testing whether two explicit \(14/5\)-colorings
+already suffice, by searching for two maps to \(KG(14,5)\). A positive result
+would prove \(\beta_2=14/5\). A negative result at this denominator would not
+settle equality, because a \(14/5\)-fractional coloring may require a scaled
+target \(KG(14t,5t)\) with \(t>1\).
+
+## Remaining gates
+
+1. Independent graph-theory review of the outer reduction.
+2. Comprehensive citation-index search and confirmation from the source
+   authors.
+3. End-to-end Lean formalization of the graph/fractional-coloring bridge.
+4. Resolve, or further narrow, the exact interval \([14/5,3]\).
+5. Prepare a short manuscript only after the first three gates are recorded.
