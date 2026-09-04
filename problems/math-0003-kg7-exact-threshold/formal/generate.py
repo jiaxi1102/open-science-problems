@@ -97,6 +97,8 @@ def monochromatic (colour : BitVec 105) (es : List Nat) : Bool :=
 /-- Every red/blue edge coloring contains a monochromatic C3 or C5. -/
 theorem odd_cycle_ramsey (colour : BitVec 105) :
     certificate.any (fun q => monochromatic colour q.2) = true := by
+  simp only [certificate, List.any_cons, List.any_nil, monochromatic,
+    List.all_cons, List.all_nil]
   bv_decide
 
 /-- Five-color masks for the first 2-fold coloring. -/
