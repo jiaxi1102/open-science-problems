@@ -1,0 +1,94 @@
+name: math-0002 beta 14/5 SAT search
+
+on:
+  push:
+    branches:
+      - experiment/math-0002-beta-14-5
+    paths:
+      - problems/math-0002-kneser-fractional-cover/experiments/**
+      - .github/workflows/math-0002-beta-14-5-search.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve:
+    name: intersection-${{ matrix.intersection }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        intersection: [0, 1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build pinned Kissat solver
+        shell: bash
+        run: |
+          git clone --depth 1 --branch rel-4.0.4 https://github.com/arminbiere/kissat.git /tmp/kissat
+          cd /tmp/kissat
+          ./configure
+          make -C build -j2
+          ./build/kissat --version
+
+      - name: Generate symmetry-broken CNF
+        shell: bash
+        working-directory: problems/math-0002-kneser-fractional-cover/experiments
+        run: |
+          python generate_multicolour_cnf.py \
+            --p 14 --q 5 \
+            --intersection ${{ matrix.intersection }} \
+            --output case.cnf | tee generator-output.txt
+          grep -q 'variables=994' generator-output.txt
+          grep -q 'clauses=230489' generator-output.txt
+
+      - name: Solve
+        id: solve
+        shell: bash
+        working-directory: problems/math-0002-kneser-fractional-cover/experiments
+        run: |
+          set +e
+          timeout --signal=TERM 60m /tmp/kissat/build/kissat --sat case.cnf > solver-output.txt 2>&1
+          code=$?
+          set -e
+          case "$code" in
+            10)
+              status=SAT
+              python verify_multicolour_model.py \
+                --p 14 --q 5 \
+                --solver-output solver-output.txt \
+                --json-output model.json | tee verification-output.txt
+              ;;
+            20)
+              status=UNSAT
+              ;;
+            124|143)
+              status=TIMEOUT
+              ;;
+            *)
+              status=ERROR-$code
+              ;;
+          esac
+          echo "$status" | tee status.txt
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          tail -100 solver-output.txt
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: beta-14-5-intersection-${{ matrix.intersection }}
+          path: |
+            problems/math-0002-kneser-fractional-cover/experiments/status.txt
+            problems/math-0002-kneser-fractional-cover/experiments/generator-output.txt
+            problems/math-0002-kneser-fractional-cover/experiments/solver-output.txt
+            problems/math-0002-kneser-fractional-cover/experiments/verification-output.txt
+            problems/math-0002-kneser-fractional-cover/experiments/model.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Fail only on solver or verification error
+        if: startsWith(steps.solve.outputs.status, 'ERROR')
+        run: exit 1
