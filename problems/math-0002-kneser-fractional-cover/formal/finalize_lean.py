@@ -3,7 +3,7 @@
 from pathlib import Path
 p = Path(__file__).with_name('KneserCover.lean')
 s = p.read_text()
-# supported propositional bitvector equality
+# Turn the double-star predicate into a proposition so simp can expose it.
 start=s.index('def containedInDoubleStar')
 end=s.index('\ndef blueOnChunk0',start)
 core=s[start:end].replace(': Bool :=',': Prop :=',1)
@@ -13,28 +13,30 @@ matching=['popcount28','bitAsFive','matchingFree']+[f'matchingFreeChunk{i}' for 
 s=s.replace('    containedInDoubleStar chosen = true := by\n  bv_decide',
 '''    containedInDoubleStar chosen := by
   simp only [%s] at *
-  bv_decide (config := { timeout := 180 })''' % ', '.join(matching))
+  bv_decide (config := { timeout := 300 })''' % ', '.join(matching))
+# Keep all definitions and the concrete sharpness witness, but replace the
+# fully symmetric expensive theorem by the transitivity-reduced statement.
 cut=s.index('/-- No triangle-free red/blue colouring')
 s=s[:cut]
 defs=['popcount28','bitAsFive','containedInDoubleStar','blueOn']+[f'blueOnChunk{i}' for i in range(9)]+['redOn']+[f'redOnChunk{i}' for i in range(9)]+['triangleFree']+[f'triangleFreeChunk{i}' for i in range(18)]
-# CORE_MASKS[0] = double star centered at {0,1}; generated from lexicographic V
 s += '''/-- After relabelling the first double-star core to `{0,1}`, no
-triangle-free red/blue colouring has opposite 12-vertex independent sets.
+triangle-free red/blue colouring has opposite 11-vertex independent sets.
 The second core remains completely arbitrary. -/
-theorem core01_obstruction
+theorem core01_obstruction11
     (A B : BV28) (colour : BV210)
-    (hACard : popcount28 A = 12#5)
-    (hBCard : popcount28 B = 12#5)
+    (hACard : popcount28 A = 11#5)
+    (hBCard : popcount28 B = 11#5)
     (hAStar : (A &&& 8191#28) = A)
     (hBStar : containedInDoubleStar B)
     (hABlue : blueOn A colour = true)
     (hBRed : redOn B colour = true)
     (hTriangles : triangleFree colour = true) : False := by
   simp only [%s] at *
-  bv_decide (config := { timeout := 600 })
+  bv_decide (config := { timeout := 1800 })
 
-#print axioms matchingFree12_is_doubleStar
-#print axioms core01_obstruction
+#print axioms ten_set_sharpness_witness
+#print axioms matchingFree11_is_doubleStar
+#print axioms core01_obstruction11
 
 end KneserCover
 ''' % ', '.join(defs)
