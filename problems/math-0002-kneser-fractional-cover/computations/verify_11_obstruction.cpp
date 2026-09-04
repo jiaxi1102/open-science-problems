@@ -6,7 +6,6 @@
 #include <functional>
 #include <iostream>
 #include <map>
-#include <numeric>
 #include <set>
 #include <utility>
 #include <vector>
@@ -40,10 +39,13 @@ struct NAE3Solver {
 
   bool propagate(deque<int>& queue) {
     while (!queue.empty()) {
-      int changed = queue.front();
+      const int changed = queue.front();
       queue.pop_front();
       for (int ci : occurrences[changed]) {
-        int zero = 0, one = 0, unset = 0, lastUnset = -1;
+        int zero = 0;
+        int one = 0;
+        int unset = 0;
+        int lastUnset = -1;
         for (int v : clauses[ci]) {
           if (value[v] == -1) {
             ++unset;
@@ -72,7 +74,9 @@ struct NAE3Solver {
       if (value[v] != -1) continue;
       int score = 0;
       for (int ci : occurrences[v]) {
-        int zero = 0, one = 0, unset = 0;
+        int zero = 0;
+        int one = 0;
+        int unset = 0;
         for (int w : clauses[ci]) {
           if (value[w] == -1) ++unset;
           else if (value[w] == 0) ++zero;
@@ -90,7 +94,7 @@ struct NAE3Solver {
 
   bool dfs() {
     ++nodes;
-    int v = chooseVariable();
+    const int v = chooseVariable();
     if (v < 0) return true;
     const int mark = static_cast<int>(trail.size());
     for (int x = 0; x <= 1; ++x) {
@@ -146,8 +150,8 @@ int main() {
   for (int i = 0; i < 28; ++i) vertexId[vertices[i]] = i;
 
   auto disjoint = [&](int a, int b) {
-    auto A = vertices[a];
-    auto B = vertices[b];
+    const auto A = vertices[a];
+    const auto B = vertices[b];
     return A.first != B.first && A.first != B.second &&
            A.second != B.first && A.second != B.second;
   };
@@ -173,12 +177,13 @@ int main() {
       }
     }
   }
+  if (kneserEdges.size() != 210 || triangles.size() != 420) return 1;
 
   vector<vector<int>> doubleStars;
   for (auto [x, y] : vertices) {
     vector<int> core;
     for (int i = 0; i < 28; ++i) {
-      auto e = vertices[i];
+      const auto e = vertices[i];
       if (e.first == x || e.second == x || e.first == y || e.second == y) {
         core.push_back(i);
       }
@@ -192,20 +197,20 @@ int main() {
   if (allA.size() != 78) return 3;
 
   // Compute the four orbits of 11-subsets of D_{01} under the full stabilizer
-  // of {0,1}: S_2 x S_6. This is checked, not assumed.
+  // of {0,1}: S_2 x S_6. The orbit decomposition is checked, not assumed.
   vector<array<int, 28>> stabilizer;
   vector<int> tail = {2, 3, 4, 5, 6, 7};
   do {
-    for (int swap = 0; swap < 2; ++swap) {
+    for (int swapCore = 0; swapCore < 2; ++swapCore) {
       array<int, 8> pointPerm{};
-      pointPerm[0] = swap ? 1 : 0;
-      pointPerm[1] = swap ? 0 : 1;
+      pointPerm[0] = swapCore ? 1 : 0;
+      pointPerm[1] = swapCore ? 0 : 1;
       for (int i = 0; i < 6; ++i) pointPerm[i + 2] = tail[i];
       array<int, 28> edgePerm{};
       for (int i = 0; i < 28; ++i) {
         int x = pointPerm[vertices[i].first];
         int y = pointPerm[vertices[i].second];
-        if (x > y) swap(x, y);
+        if (x > y) std::swap(x, y);
         edgePerm[i] = vertexId[{x, y}];
       }
       stabilizer.push_back(edgePerm);
@@ -220,13 +225,13 @@ int main() {
   vector<int> representatives;
   vector<int> orbitSizes;
   while (!unseen.empty()) {
-    int representative = *unseen.begin();
+    const int representative = *unseen.begin();
     set<int> orbit;
     for (const auto& perm : stabilizer) {
       vector<int> image;
       for (int v : allA[representative]) image.push_back(perm[v]);
       sort(image.begin(), image.end());
-      auto it = aIndex.find(image);
+      const auto it = aIndex.find(image);
       if (it == aIndex.end()) return 5;
       orbit.insert(it->second);
     }
@@ -235,7 +240,8 @@ int main() {
     for (int i : orbit) unseen.erase(i);
   }
   sort(orbitSizes.begin(), orbitSizes.end());
-  if (representatives.size() != 4 || orbitSizes != vector<int>({6, 12, 30, 30})) return 6;
+  if (representatives.size() != 4 ||
+      orbitSizes != vector<int>({6, 12, 30, 30})) return 6;
 
   set<vector<int>> uniqueB;
   for (const auto& core : doubleStars) {
@@ -244,13 +250,14 @@ int main() {
   vector<vector<int>> allB(uniqueB.begin(), uniqueB.end());
   if (allB.size() != 2184) return 7;
 
-  auto internalKneserEdges = [&](const vector<int>& set) {
+  auto internalKneserEdges = [&](const vector<int>& chosen) {
     vector<int> result;
-    for (int i = 0; i < static_cast<int>(set.size()); ++i) {
-      for (int j = i + 1; j < static_cast<int>(set.size()); ++j) {
-        int a = set[i], b = set[j];
-        if (a > b) swap(a, b);
-        auto it = edgeId.find({a, b});
+    for (int i = 0; i < static_cast<int>(chosen.size()); ++i) {
+      for (int j = i + 1; j < static_cast<int>(chosen.size()); ++j) {
+        int a = chosen[i];
+        int b = chosen[j];
+        if (a > b) std::swap(a, b);
+        const auto it = edgeId.find({a, b});
         if (it != edgeId.end()) result.push_back(it->second);
       }
     }
@@ -297,7 +304,8 @@ int main() {
     }
   }
 
-  const double seconds = chrono::duration<double>(chrono::steady_clock::now() - startTime).count();
+  const double seconds =
+      chrono::duration<double>(chrono::steady_clock::now() - startTime).count();
   cout << "UNSAT"
        << " vertices=28 kneser_edges=" << kneserEdges.size()
        << " triangles=" << triangles.size()
