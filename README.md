@@ -10,7 +10,7 @@ The repository is deliberately conservative about claims. A computational result
 |---|---|---|---|---|---|
 | `math-0001` | Hedgehog plucking-polynomial unimodality (Conjecture 4.1) | algebraic combinatorics / knot theory | `proposed-proof` | Lean 4 proof of stronger coefficient theorem | pending |
 | `math-0002` | Fractional \(5/2\)-cover number of \(KG(8,2)\) | graph theory / fractional coloring | `proposed-proof` | Lean 4 verification of the finite obstruction and matching-family classification | pending |
-| `math-0003` | Universal five-point lower bound for Kneser triangle Ramsey numbers | extremal combinatorics / Ramsey theory | `proposed-proof` | finite gadget verified in Lean 4 by kernel reduction; arbitrary-`r` lift written | pending |
+| `math-0003` | Universal five-point lower bound for Kneser triangle Ramsey numbers | extremal combinatorics / Ramsey theory | `proposed-proof` | complete arbitrary-`r` lower-bound witness verified end to end in Lean 4.33.1 | pending |
 
 See [`PROBLEMS.md`](PROBLEMS.md) for the registry and [`CONTRIBUTING.md`](CONTRIBUTING.md) for the required structure and claim standards.
 
@@ -71,4 +71,4 @@ A proposed uniform strengthening of the lower bound for diagonal triangle Ramsey
 R_r^{\mathrm{KG}}(3,3)\ge 3r+3\qquad(r\ge1).
 \]
 
-The construction fixes five distinguished ground points and colors each Kneser edge solely from the two traces on those points. A four-case human proof lifts one finite five-point gadget to every `r`. Lean verifies the complete finite gadget by kernel reduction with no unfinished proof markers or hand-written axioms; the cardinality lift to arbitrary `r` is presently written rather than end-to-end formalized. The result improves the `3r+2` bound in the posted Kneser-Ramsey paper, but literature priority and external mathematical review remain pending.
+The construction fixes five distinguished ground points and colors each Kneser edge solely from the two traces on those points. The repository contains a complete human proof, an exhaustive independent verifier, and an end-to-end Lean 4.33.1 theorem for arbitrary `r >= 1`. Lean formalizes the trace construction, pairwise-disjointness transfer, the cardinality bridge, the explicit coloring, and the final lower-bound witness; CI rejects unfinished proof markers and hand-written axioms and audits the final theorem. The result improves the `3r+2` bound in the posted Kneser-Ramsey paper, but literature priority and external mathematical review remain pending.
