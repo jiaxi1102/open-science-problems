@@ -1,13 +1,15 @@
-name: math-0002 Kneser cover Lean verification
+name: math-0002 Kneser cover verification
 
 on:
   push:
     paths:
       - problems/math-0002-kneser-fractional-cover/formal/**
+      - problems/math-0002-kneser-fractional-cover/experiments/**
       - .github/workflows/math-0002-kneser-cover.yml
   pull_request:
     paths:
       - problems/math-0002-kneser-fractional-cover/formal/**
+      - problems/math-0002-kneser-fractional-cover/experiments/**
       - .github/workflows/math-0002-kneser-cover.yml
   workflow_dispatch:
 
@@ -17,9 +19,18 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
+
+      - name: Run independent exact alpha-10 verifier
+        shell: bash
+        working-directory: problems/math-0002-kneser-fractional-cover
+        run: |
+          echo "8ce3435178190958292e87287113ff24af3aaa2a9bc5fde8aaae18a80e69f431  experiments/verify_alpha10.cpp" | sha256sum -c -
+          g++ -O3 -std=c++20 -Wall -Wextra -Werror -pedantic \
+            experiments/verify_alpha10.cpp -o /tmp/verify_alpha10
+          /tmp/verify_alpha10
 
       - name: Generate the explicit finite certificate
         shell: bash
@@ -27,7 +38,7 @@ jobs:
         run: |
           python generate_lean.py
           python finalize_lean.py
-          echo "143b3fdcb75423e419eb10d1ce7c8f9fbc700f22a0cd4d55d65e27950c0667e9  KneserCover.lean" | sha256sum -c -
+          echo "e21c37179741f8ddcea0cfc96911da4e50f8c336dc4aa72798acaa5f3a0e6cdb  KneserCover.lean" | sha256sum -c -
 
       - name: Reject unfinished or hand-written axiomatic shortcuts
         shell: bash

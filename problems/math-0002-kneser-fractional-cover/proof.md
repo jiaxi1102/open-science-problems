@@ -1,149 +1,245 @@
-# The fractional \(5/2\)-cover number of \(KG(8,2)\) is three
+# A \(14/5\) lower bound for the two-cover fractional threshold of \(KG(8,2)\)
 
-**Status:** candidate new result, prepared 31 August 2026. The argument and Lean certificate have not yet undergone peer review. Gujgiczer–Marits–Ozeki, arXiv:2607.12353v1 (July 2026), explicitly listed the two-cover question as open.
+**Status:** candidate new result, strengthened 4 September 2026. The argument,
+Lean certificate, and independent exact verifier have not yet undergone expert
+peer review. The source paper Gujgiczer–Marits–Ozeki,
+arXiv:2607.12353v1 (July 2026), states the original \(5/2\) question and the
+exact-threshold problem as open.
 
-## 1. Problem and answer
+## 1. Parameter and theorem
 
-For a graph class \(\mathcal P\), let \(c_{\mathcal P}(G)\) be the least number of subgraphs from \(\mathcal P\) whose edge sets cover \(E(G)\). Put
-
-\[
-\mathcal C_{5/2}=\{H:\chi_f(H)\le 5/2\}.
-\]
-
-The open question was whether \(KG(8,2)\) can be covered by two members of \(\mathcal C_{5/2}\). Here the vertices of \(KG(8,2)\) are the 28 two-element subsets of \([8]\), and two vertices are adjacent when the corresponding pairs are disjoint.
-
-## Main theorem
+For a finite graph \(G\), put
 
 \[
-\boxed{c_{\mathcal C_{5/2}}(KG(8,2))=3.}
+\tau_2(G)=
+\min_{E(G)\subseteq E(H_1)\cup E(H_2)}
+\max\{\chi_f(H_1),\chi_f(H_2)\}.
 \]
 
-Therefore the answer to the two-cover question is **no**.
+Deleting duplicate coverage and assigning each edge to one covering graph can
+only decrease fractional chromatic number. Hence \(\tau_2(G)\) may equivalently
+be minimized over red–blue edge partitions \(G=R\cup B\).
 
-A stronger finite statement proved along the way is:
+The strengthened result is the following.
 
-> In every red–blue coloring of \(E(KG(8,2))\) with no monochromatic triangle, at least one color graph has independence number at most 11.
+### Theorem A — independence obstruction
 
-Consequently, if \(\beta_2\) denotes the smallest fractional-chromatic threshold at which two covering graphs become possible, then
+In every red–blue coloring of \(E(KG(8,2))\) with no monochromatic triangle,
 
 \[
-\beta_2(KG(8,2))\ge \frac{28}{11}>\frac52.
+\min\{\alpha(R),\alpha(B)\}\le10.
 \]
 
-## 2. Upper bound: three bipartite graphs suffice
-
-Color the vertex \(\{i,j\}\), with \(i<j\), by
+### Corollary B — fractional threshold
 
 \[
-\kappa(\{i,j\})=
-\begin{cases}
-i,&i\le5,\\
-6,&i\ge6.
-\end{cases}
+\boxed{\frac{14}{5}\le\tau_2(KG(8,2))\le3.}
 \]
 
-This is a proper six-coloring. For colors 1 through 5, every pair in a color class contains the color label. The sixth class is
-\(\{\{6,7\},\{6,8\},\{7,8\}\}\), whose members also intersect pairwise.
-
-Assign the six colors distinct three-bit strings. For bit position \(t\), let \(H_t\) contain the edges whose endpoint color strings differ in bit \(t\). Each \(H_t\) is bipartite, using that bit as its bipartition. Every Kneser edge joins distinct colors, whose codewords differ in at least one bit, so every edge lies in some \(H_t\). Hence
+In particular,
 
 \[
-c_{\mathcal C_{5/2}}(KG(8,2))\le3.
+c_{\{\chi_f\le5/2\}}(KG(8,2))=3.
 \]
 
-## 3. Lower bound: two graphs cannot suffice
+## 2. Deriving Corollary B from Theorem A
 
-Assume for contradiction that the Kneser edges are covered by two graphs \(R,B\) satisfying
+Consider any red–blue partition of \(E(KG(8,2))\).
+
+If one color graph contains a triangle, then its fractional chromatic number is
+at least \(\chi_f(K_3)=3\), and therefore at least \(14/5\).
+
+Otherwise the coloring has no monochromatic triangle. Theorem A gives, in one
+color graph \(H\),
 
 \[
-\chi_f(R),\chi_f(B)\le\frac52.
+\alpha(H)\le10.
 \]
 
-Because fractional chromatic number does not increase on taking subgraphs, assign each covered edge to one of the two graphs; thus the cover may be treated as a red–blue edge partition.
-
-### 3.1 Both color graphs are triangle-free
-
-A triangle has fractional chromatic number 3. Therefore neither \(R\) nor \(B\) contains a triangle, so every one of the 420 triangles of \(KG(8,2)\) is non-monochromatic.
-
-### 3.2 Each color graph has an independent 12-set
-
-For every finite graph \(H\),
+For every finite graph,
 
 \[
 \chi_f(H)\ge\frac{|V(H)|}{\alpha(H)}.
 \]
 
-Since \(|V(KG(8,2))|=28\),
+Both color graphs use the same 28-vertex set, so
 
 \[
-\alpha(R),\alpha(B)\ge
-\left\lceil\frac{28}{5/2}\right\rceil=12.
+\chi_f(H)\ge\frac{28}{10}=\frac{14}{5}.
 \]
 
-Choose a 12-set \(A\) independent in red and a 12-set \(C\) independent in blue. Every Kneser edge induced by \(A\) is blue; every Kneser edge induced by \(C\) is red.
+This proves the lower bound.
 
-Interpret the 28 Kneser vertices as the 28 edges of \(K_8\). A Kneser triangle is exactly a matching of three edges in \(K_8\). If \(A\) contained such a matching, its three Kneser edges would form a blue triangle. Thus the 12-edge graph \(A\subseteq E(K_8)\) has matching number at most two. The same holds for \(C\).
+For the upper bound, properly color \(KG(8,2)\) with six colors. One explicit
+coloring sends \(\{i,j\}\), \(i<j\), to \(i\) when \(i\le5\), and to color 6
+when \(i\ge6\). Each color class is intersecting, hence independent in the
+Kneser graph.
 
-### 3.3 Structure lemma
+Give the six colors distinct codes in \([3]^2\). For coordinate \(t\in\{1,2\}\),
+let \(H_t\) contain precisely the Kneser edges whose endpoint codes differ in
+coordinate \(t\). Each \(H_t\) is 3-partite. Every Kneser edge joins distinct
+proper colors, whose codes differ in at least one coordinate, so
+\(H_1\cup H_2\) covers all edges. Thus \(\tau_2(KG(8,2))\le3\).
 
-**Lemma.** Every 12-edge graph \(F\) on eight vertices with \(\nu(F)\le2\) is contained in a 13-edge double star
+## 3. Translating independent sets into matching-free families
+
+The vertices of \(KG(8,2)\) are the 28 edges of \(K_8\). Two Kneser vertices
+are adjacent exactly when the corresponding \(K_8\)-edges are disjoint. Three
+Kneser vertices form a triangle exactly when the corresponding edges form a
+three-edge matching in \(K_8\).
+
+Assume for contradiction that a triangle-free red–blue coloring has
+
+\[
+\alpha(R)\ge11
+\quad\text{and}\quad
+\alpha(B)\ge11.
+\]
+
+Choose an 11-set \(A\) independent in red and an 11-set \(C\) independent in
+blue. Every Kneser edge induced by \(A\) is blue; every Kneser edge induced by
+\(C\) is red.
+
+If \(A\), viewed as an 11-edge subgraph of \(K_8\), contained a three-edge
+matching, the corresponding Kneser triangle would be entirely blue. Therefore
+\(\nu(A)\le2\). Similarly, \(\nu(C)\le2\).
+
+## 4. Eleven-edge structure lemma
+
+### Lemma C
+
+Every 11-edge graph \(F\) on eight vertices with matching number at most two is
+contained in a 13-edge double star
 
 \[
 D_{xy}=\{e\in E(K_8):e\cap\{x,y\}\ne\varnothing\}.
 \]
 
-**Proof.** The Tutte–Berge formula gives a set \(S\subseteq V(F)\) such that
+### Proof
+
+By the Tutte–Berge formula, \(\nu(F)\le2\) implies that some
+\(S\subseteq V(F)\) satisfies
 
 \[
-o(F-S)-|S|\ge4.
+o(F-S)-|S|\ge4,
 \]
 
-Write \(s=|S|\). Since \(o(F-S)\le8-s\), we have \(s\le2\).
+where \(o(F-S)\) denotes the number of odd components of \(F-S\). Since
+\(o(F-S)\le8-|S|\), necessarily \(|S|\le2\).
 
-If \(s=0\), at least four odd components partition eight vertices; convexity of \(\binom{x}{2}\) shows that at most \(\binom52=10\) edges are possible. If \(s=1\), the seven vertices outside \(S\) have at least five odd components, hence at most three internal edges, while at most seven edges meet \(S\); again there are at most ten edges. Both contradict \(|E(F)|=12\).
+If \(|S|=0\), the eight vertices are partitioned into at least four odd
+components. Convexity of \(\binom{x}{2}\) shows that the maximum possible
+number of internal edges is attained by component sizes \(5,1,1,1\), giving at
+most
 
-Thus \(s=2\). The six vertices of \(F-S\) form at least six odd components, so they are all isolated. Every edge of \(F\) meets \(S\), proving \(F\subseteq D_S\). ∎
+\[
+\binom52=10
+\]
 
-Therefore \(A\) and \(C\) are each 12-element subsets of a double star.
+edges, contrary to \(|E(F)|=11\).
 
-### 3.4 Exact finite obstruction
+If \(|S|=1\), the seven vertices outside \(S\) have at least five odd
+components. They span at most three edges, attained by sizes \(3,1,1,1,1\).
+At most seven further edges meet \(S\), so again \(|E(F)|\le10\), a
+contradiction.
 
-It remains to rule out a red–blue coloring of the 210 Kneser edges satisfying all of the following:
+Thus \(|S|=2\). The six vertices outside \(S\) have at least six odd
+components, hence are six singleton components. No edge of \(F\) has both ends
+outside \(S\). Therefore every edge meets the two-vertex set \(S\), so
+\(F\subseteq D_S\). ∎
+
+The same proof also covers the previously used 12-edge structure statement.
+
+## 5. Four stabilizer orbits
+
+By Lemma C, both \(A\) and \(C\) are 11-subsets of double stars. The symmetric
+group \(S_8\) acts transitively on double-star cores, so relabel the ground set
+until the core containing \(A\) is \(\{0,1\}\).
+
+The double star \(D_{01}\) consists of:
+
+- the center edge \(01\);
+- six spokes \(0i\), \(2\le i\le7\);
+- six spokes \(1i\), \(2\le i\le7\).
+
+An 11-subset of \(D_{01}\) is obtained by deleting two of these 13 edges. The
+stabilizer of the unordered core \(\{0,1\}\) is generated by swapping the two
+centers and permuting the six leaves. Consequently, the unordered deletion
+pair has exactly four orbits:
+
+| Orbit | Representative deletions | Number of pairs |
+|---|---:|---:|
+| center–spoke | \(01,02\) | 12 |
+| same-center spokes | \(02,03\) | 30 |
+| opposite spokes, same leaf | \(02,12\) | 6 |
+| opposite spokes, distinct leaves | \(02,13\) | 30 |
+
+The counts sum to \(78=\binom{13}{2}\), so the list is exhaustive.
+
+After this reduction, the second set \(C\) must remain arbitrary: its core can
+be any of the 28 pairs, and it can be any 11-subset of the associated double
+star.
+
+## 6. Exact finite obstruction
+
+For each of the four first-set representatives, no choice of
+
+- a second double-star core;
+- an 11-subset \(C\) of that double star; and
+- a red–blue coloring of the 210 Kneser edges
+
+simultaneously satisfies:
 
 1. all 420 Kneser triangles are non-monochromatic;
-2. all Kneser edges induced by a 12-subset \(A\) of one double star are blue;
-3. all Kneser edges induced by a 12-subset \(C\) of another double star are red.
+2. all Kneser edges induced by the fixed first set \(A\) are blue;
+3. all Kneser edges induced by \(C\) are red.
 
-The symmetric group \(S_8\) acts transitively on the 28 double-star cores. Relabeling the ground set therefore fixes the first core as \(\{0,1\}\) without restricting the second core or the edge coloring. The Lean theorem `core01_obstruction` checks precisely this universal fixed-core statement: both 12-sets and all 210 colors remain quantified variables, and the second double-star core remains an arbitrary 28-way choice.
+The four Lean theorems
 
-The theorem `matchingFree12_is_doubleStar` independently checks the complete 28-bit classification used in the structure lemma. Together with the elementary relabeling argument, the Lean certificate proves the full finite obstruction.
+```text
+alpha10_center_spoke_obstruction
+alpha10_same_center_obstruction
+alpha10_same_leaf_obstruction
+alpha10_distinct_leaves_obstruction
+```
 
-This contradicts the sets \(A,C\), so two \(5/2\)-fractionally-colorable graphs do not suffice. Combining the lower and upper bounds proves
+check these universal statements. In each theorem, the second 11-set and all
+210 colors remain quantified variables. The theorem
+`matchingFree11_is_doubleStar` independently verifies the complete 28-bit
+structure classification used before the symmetry reduction.
+
+A separately written C++ verifier reconstructs the graph and examines
 
 \[
-c_{\mathcal C_{5/2}}(KG(8,2))=3.
+4\cdot28\cdot\binom{13}{2}=8736
 \]
 
-## 4. Further corollary
+cases. Of these, 6596 contain an immediate edge-color conflict and the
+remaining 2140 are proved unsatisfiable by an exact NAE-3 branch-and-propagate
+solver. Its deterministic totals are:
 
-The cited paper constructs a two-graph \(5/2\)-fractional cover of \(KG(7,2)\). Restricting that construction handles every \(KG(n,2)\) with \(n\le7\). Conversely, \(KG(8,2)\) is an induced subgraph of \(KG(n,2)\) for every \(n\ge8\). Hence:
+```text
+center_spoke              2184 cases: 1819 direct, 365 solved UNSAT
+same_center_spokes        2184 cases: 1622 direct, 562 solved UNSAT
+opposite_same_leaf        2184 cases: 1478 direct, 706 solved UNSAT
+opposite_distinct_leaves  2184 cases: 1677 direct, 507 solved UNSAT
+TOTAL                     8736 cases: 6596 direct, 2140 solved UNSAT
+```
 
-\[
-KG(n,2)\text{ is coverable by two }5/2\text{-fractionally-colorable graphs}
-\iff n\le7.
-\]
+Therefore the assumed pair \(A,C\) cannot exist. This proves Theorem A and
+hence Corollary B.
 
-## 5. Lean verification
+## 7. Lean package and trust boundary
 
 The formal package uses Lean 4.33.1 and only Lean's standard library.
 
 - `BV28 := BitVec 28` represents a family of edges of \(K_8\).
-- `BV210 := BitVec 210` represents a red–blue coloring of \(E(KG(8,2))\).
+- `BV210 := BitVec 210` represents a red–blue coloring of
+  \(E(KG(8,2))\).
 - `matchingFree` expands all 420 three-edge matchings.
-- `triangleFree` expands all 420 Kneser triangles as not-all-equal constraints.
-- `blueOn` and `redOn` impose the two monochromatic induced-subgraph conditions.
-- `matchingFree12_is_doubleStar` verifies the 12-edge structure classification.
-- `core01_obstruction` verifies the universal transitivity-reduced coloring obstruction.
+- `triangleFree` expands all 420 Kneser triangles as not-all-equal clauses.
+- `blueOn` and `redOn` impose the two monochromatic induced-subgraph
+  conditions.
 
 Run:
 
@@ -157,15 +253,34 @@ lake build
 The generated source has SHA-256
 
 ```text
-143b3fdcb75423e419eb10d1ce7c8f9fbc700f22a0cd4d55d65e27950c0667e9
+e21c37179741f8ddcea0cfc96911da4e50f8c336dc4aa72798acaa5f3a0e6cdb
 ```
 
-### Trust boundary
+The proofs use Lean's `bv_decide`, which bit-blasts the finite propositions,
+invokes CaDiCaL, and checks the resulting LRAT evidence. In Lean 4.33.1 the
+final reflective computation is native, so the compiler/native evaluator is
+part of the trusted computing base. There are no `sorry`, `admit`, or
+hand-written axioms.
 
-The proofs use Lean's `bv_decide`. It bit-blasts the finite propositions, invokes CaDiCaL, and checks the resulting LRAT refutations with a checker proved sound in Lean. In Lean 4.33.1 the final reflective computation is native, so the Lean compiler/native evaluator is part of the trusted computing base and a generated native-computation axiom appears in `#print axioms`. There are no `sorry`, `admit`, or hand-written axioms in the source. This is a standard Lean machine certificate, but not a compiler-independent kernel-only certificate.
+The outer fractional-coloring argument, Tutte–Berge proof, and group-action
+orbit reduction remain human proofs rather than one end-to-end Lean theorem.
+Accordingly this package is classified as `partial-theorem-verified`.
 
-## 6. Verification scope and research status
+## 8. Remaining exact problem
 
-Lean verifies the delicate exhaustive finite obstruction and the matching-family classification. The outer reduction uses standard graph-theoretic facts—the fractional chromatic bound \(\chi_f\ge |V|/\alpha\), monotonicity, Tutte–Berge, and the explicit three-bit construction—and is written above as a human proof rather than encoded in a general graph/fractional-coloring library.
+The candidate result narrows the source paper's exact-threshold question to
 
-This should be treated as a candidate resolution until independent experts reproduce the build, audit the reduction and enumeration, and confirm literature novelty.
+\[
+\frac{14}{5}\le\tau_2(KG(8,2))\le3.
+\]
+
+The next objective is to determine the exact value. The certificate strategy
+should be neutral:
+
+- a construction below 3 must include exact rational fractional colorings of
+  both color graphs;
+- a proof of equality 3 should attach exact rational dual certificates showing
+  that every surviving structural coloring has one color with fractional
+  chromatic number at least 3.
+
+No exact-value claim is made in this document.
