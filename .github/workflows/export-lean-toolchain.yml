@@ -1,0 +1,28 @@
+name: Export pinned Lean runtime
+on:
+  push:
+    branches: [research/kg7-exact-threshold-20260904]
+    paths: [.github/workflows/export-lean-toolchain.yml]
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install Lean 4.33.1
+        run: |
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain leanprover/lean4:v4.33.1
+          "$HOME/.elan/bin/lean" --version
+      - name: Package compiler and libraries
+        run: |
+          cd "$HOME/.elan/toolchains/leanprover--lean4---v4.33.1"
+          du -sh bin lib include
+          tar --zstd -cf "$RUNNER_TEMP/lean-4.33.1-portable.tar.zst" bin lib include
+          ls -lh "$RUNNER_TEMP/lean-4.33.1-portable.tar.zst"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lean-4.33.1-portable
+          compression-level: 0
+          retention-days: 1
+          path: ${{ runner.temp }}/lean-4.33.1-portable.tar.zst
