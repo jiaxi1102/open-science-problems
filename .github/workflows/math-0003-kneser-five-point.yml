@@ -1,0 +1,58 @@
+name: math-0003 five-point Kneser lower bound
+
+on:
+  push:
+    branches: [math-0003-five-point-kneser]
+    paths:
+      - problems/math-0003-kneser-ramsey-lower-bound/**
+      - tools/verify_kneser_five_point.py
+      - .github/workflows/math-0003-kneser-five-point.yml
+  pull_request:
+    paths:
+      - problems/math-0003-kneser-ramsey-lower-bound/**
+      - tools/verify_kneser_five_point.py
+      - .github/workflows/math-0003-kneser-five-point.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify all trace partitions and r=1..4 regressions
+        run: python tools/verify_kneser_five_point.py
+
+      - name: Reject unfinished or hand-written axiomatic shortcuts
+        shell: bash
+        working-directory: problems/math-0003-kneser-ramsey-lower-bound/formal
+        run: |
+          if grep -RInE --include='*.lean' '\b(sorry|admit)\b' .; then
+            echo "Unfinished proof marker found"
+            exit 1
+          fi
+          if grep -RInE --include='*.lean' '^[[:space:]]*axiom[[:space:]]' .; then
+            echo "Hand-written axiom found"
+            exit 1
+          fi
+
+      - name: Build end-to-end Lean lower bound
+        uses: leanprover/lean-action@v1
+        env:
+          LEAN_NUM_THREADS: '1'
+        with:
+          lake-package-directory: problems/math-0003-kneser-ramsey-lower-bound/formal
+          build: true
+          test: false
+          lint: false
+          leanchecker: false
+          axiom-audit: true
+          axiom-audit-root: KneserFivePoint
+          axiom-audit-allow: propext,Classical.choice,Quot.sound
