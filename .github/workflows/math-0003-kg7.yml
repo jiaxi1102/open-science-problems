@@ -3,7 +3,8 @@ on:
   push:
     branches: [research/kg7-exact-threshold-20260904]
     paths:
-      - problems/math-0003-kg7-exact-threshold/**
+      - problems/math-0003-kg7-exact-threshold/formal/**
+      - problems/math-0003-kg7-exact-threshold/experiments/**
       - .github/workflows/math-0003-kg7.yml
   workflow_dispatch:
 permissions:
@@ -14,6 +15,12 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Run independently implemented exact check
+        working-directory: problems/math-0003-kg7-exact-threshold
+        run: |
+          set -o pipefail
+          g++ -O3 -std=c++20 -Wall -Wextra -Werror -pedantic experiments/verify_independent.cpp -o /tmp/verify_kg7
+          /tmp/verify_kg7 | tee formal/independent-verification.log
       - name: Generate explicit theorem and manifest
         working-directory: problems/math-0003-kg7-exact-threshold/formal
         run: python3 generate.py
@@ -28,16 +35,20 @@ jobs:
         run: |
           set -o pipefail
           lean --version | tee verification.log
-          if grep -nE '\b(sorry|admit)\b|^[[:space:]]*axiom[[:space:]]' KG7.lean; then exit 1; fi
+          if grep -nE '\b(sorry|admit)\b|^[[:space:]]*axiom[[:space:]]' KG7.lean CycleBound.lean; then exit 1; fi
+          lean CycleBound.lean 2>&1 | tee -a verification.log
           lean KG7.lean 2>&1 | tee -a verification.log
-          sha256sum KG7.lean certificate.json generate.py lean-toolchain | tee SHA256SUMS
+          if grep -n 'sorryAx' verification.log; then exit 1; fi
+          sha256sum KG7.lean CycleBound.lean certificate.json generate.py lean-toolchain | tee SHA256SUMS
       - name: Preserve certificate and actual compiler log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: kg7-lean-certificate
           path: |
-            problems/math-0003-kg7-exact-threshold/formal/KG7.lean
-            problems/math-0003-kg7-exact-threshold/formal/certificate.json
-            problems/math-0003-kg7-exact-threshold/formal/verification.log
+            problems/math-0003-kg7-exact-threshold/formal/*.lean
+            problems/math-0003-kg7-exact-threshold/formal/*.json
+            problems/math-0003-kg7-exact-threshold/formal/*.py
+            problems/math-0003-kg7-exact-threshold/formal/*.log
+            problems/math-0003-kg7-exact-threshold/formal/lean-toolchain
             problems/math-0003-kg7-exact-threshold/formal/SHA256SUMS
