@@ -5,9 +5,9 @@
 | Dimension | Status |
 |---|---|
 | Problem | `refuted`: the universal equality fails |
-| Structural result | exact equivalence with binary radius-covering arrays; infinite-family and asymptotic consequences proved |
-| Formal verification | finite `(6,2)` certificate complete; structural Lean layer in progress |
-| Novelty | the value `CAN_1(4,6,2)=5` is 2010 prior art; graph translation and new structural theorems require expert/author confirmation |
+| Structural result | exact equivalence with radius-covering arrays; infinite Hamming-family, quantitative-gap, and phase-transition theorems proved on paper |
+| Formal verification | coordinate-copy theorem and graph/coding bridge kernel-checked; quantitative algebra checked; finite `(6,2)` certificate complete |
+| Novelty | `CAN_1(4,6,2)=5` is 2010 prior art; structural package is candidate new and requires specialist/author confirmation |
 | External review | none yet |
 
 ## Original question
@@ -24,27 +24,28 @@ for every `0<k<n`.
 ## Exact translation
 
 Let `CAN_r(m,n,2)` denote the minimum number of rows in a binary
-radius-covering array of strength `m`, length `n`, and radius `r`. The
-central structural theorem is
+radius-covering array of strength `m`, length `n`, and radius `r`. The central
+structural theorem is
 
 ```text
-ι(Q_n,Q_k) = CAN_1(n-k,n,2).
+ι(Q_n,Q_k)=CAN_1(n-k,n,2).
 ```
 
 More generally, deleting the radius-`r` neighborhood of a set so that no
 codimension-`m` subcube remains has minimum size `CAN_r(m,n,2)`.
 
 The reason is exact: every copy of a hypercube inside a hypercube is a
-coordinate subcube, and the distance from a word to a face equals the
-Hamming distance between its restriction to the fixed coordinates and the
-face pattern.
+coordinate subcube, and the distance from a word to a face equals the Hamming
+distance between its restriction to the fixed coordinates and the face
+pattern.
 
-The complete proof is in
-[`proof/structural-theory.md`](proof/structural-theory.md).
+The full manuscript is in [`paper/draft.md`](paper/draft.md), with modular
+proofs in [`proof/structural-theory.md`](proof/structural-theory.md) and
+[`proof/quantitative-hamming-gap.md`](proof/quantitative-hamming-gap.md).
 
 ## Main consequences
 
-### Infinite Hamming-family refutation
+### Infinite Hamming-family classification
 
 For every `t>=3`, put `m=2^t-1`. Then
 
@@ -54,10 +55,28 @@ For every `t>=3`, put `m=2^t-1`. Then
 
 The equality for `k=1` is the known parity-extension theorem for binary
 radius-covering arrays. For every `k>=2`, strict inequality follows from a
-new robust-extension obstruction for perfect codes: if every deletion of
-two columns from an optimal-size array had covering radius one, each
-projection would be a perfect Hamming code, forcing full minimum distance
-at least five; the Hamming packing bound then gives a contradiction.
+perfect-code extension obstruction: if every deletion down to `m` columns
+were an optimal covering code, all those projections would be perfect, forcing
+full minimum distance incompatible with sphere packing.
+
+### Quantitative exponential additive gap
+
+Writing
+
+```text
+K=γ(Q_m)=2^m/(m+1),
+```
+
+the candidate quantitative theorem gives, for every `k>=2`,
+
+```text
+ι(Q_(m+k),Q_k)
+  >= K + ceil(3K m(m-3)/[4(m+2)(m+1)^4]).
+```
+
+Hence the additive gap is `Omega(2^m/m^4)`. At `m=31` the theorem already
+forces at least `1,263` extra vertices; at `m=63`, at least
+`374,653,301,052` extra vertices.
 
 ### Fixed-codimension phase transition
 
@@ -70,10 +89,10 @@ For fixed codimension `m`,
   Θ_m(log n)     if m>=4.
 ```
 
-Hence, for every fixed `m>=4`,
+Consequently, for every fixed `m>=4`,
 
 ```text
-ι(Q_n,Q_(n-m)) / γ(Q_m) -> infinity.
+ι(Q_n,Q_(n-m))/γ(Q_m) -> infinity.
 ```
 
 This turns the original equality failure into an unbounded asymptotic
@@ -90,7 +109,7 @@ CAN_1(4,6,2)=5.
 The exact translation gives
 
 ```text
-ι(Q_6,Q_2)=5 > 4=γ(Q_4).
+ι(Q_6,Q_2)=5>4=γ(Q_4).
 ```
 
 A minimum set is
@@ -103,44 +122,45 @@ This numerical value is **not new**. The repository retains an independent
 proof, Python enumeration, and Lean certificate because they make the graph
 counterexample directly auditable.
 
-## Verification
+## Lean verification
 
-The current Lean file
-[`formal/HypercubeIsolation.lean`](formal/HypercubeIsolation.lean) verifies:
+The formal package now contains:
 
-1. `{0000,0001,1110,1111}` dominates `Q_4`;
-2. no three vertices dominate `Q_4`;
-3. the displayed five vertices isolate every coordinate square of `Q_6`;
-4. no four vertices do.
+- [`CubeCopies.lean`](formal/HypercubeIsolation/CubeCopies.lean): every
+  injective edge-preserving map `Q_k→Q_n` is a coordinate embedding;
+- [`StructuralTheory.lean`](formal/HypercubeIsolation/StructuralTheory.lean):
+  the exact distance-to-face identity, the coordinate-face/radius-covering
+  equivalence, and perfect-code volume arithmetic;
+- [`QuantitativeGap.lean`](formal/HypercubeIsolation/QuantitativeGap.lean):
+  the algebra combining the pair-count bounds and exact coefficients for
+  `m=7,15,31,63`;
+- [`HypercubeIsolation.lean`](formal/HypercubeIsolation.lean): the finite
+  `(6,2)` witness and exhaustive lower bound.
 
-The first three checks use kernel reduction. The exhaustive fourth check
-uses `native_decide`, and its generated axiom is disclosed in
-[`artifacts/CI.md`](artifacts/CI.md). The same finite claim is independently
-reproduced by [`experiments/discover.py`](experiments/discover.py).
+The structural theorems are kernel-checked and report only standard
+classical/extensionality axioms from Mathlib. The exhaustive finite lower bound
+still uses `native_decide`; its generated axiom is explicitly disclosed, and
+an independent Python search reproduces the result.
 
-The next formal layer is being added on the new structural branch:
-
-- the coordinate-face/projection distance identity;
-- the equivalence between subcube isolation and radius-covering arrays;
-- the length-nine Hamming packing obstruction underlying the first member
-  `m=7` of the infinite family;
-- kernel-checked arithmetic for the general volume inequality.
+The remaining end-to-end formalization target is the incidence-counting and
+sphere-packing proof of the quantitative theorem.
 
 ## Prior-art correction
 
-The first pass searched only graph-isolation terminology and therefore
-missed the coding-theory name of the same finite object. The corrected
-record is in [`references/NOVELTY.md`](references/NOVELTY.md). In
-particular:
+The first pass searched only graph-isolation terminology and therefore missed
+the coding-theory name of the same finite object. The corrected records are in
+[`references/NOVELTY.md`](references/NOVELTY.md) and
+[`references/RADIUS_COVERING_ARRAYS.md`](references/RADIUS_COVERING_ARRAYS.md).
+In particular:
 
 - radius-covering arrays were defined and tabulated by
   Colbourn--Kéri--Rivas Soriano--Schlage-Puchta in 2010;
 - their table records `CAN_1(4,6,2)=5`;
 - their Theorem 7.3 proves `CAN_r(m,m+1,2)=K_2(m,r)`.
 
-No priority claim should be made for the graph--coding bridge or the new
-theorems until coding theorists, graph theorists, and the authors of the
-2026 problem review them.
+No priority claim should be made for the graph/coding bridge or new structural
+theorems until coding theorists, graph theorists, and the authors of the 2026
+problem review them.
 
 ## Build
 
