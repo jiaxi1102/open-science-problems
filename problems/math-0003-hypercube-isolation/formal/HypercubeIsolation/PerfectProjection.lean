@@ -46,6 +46,7 @@ theorem pairwiseDisjoint_of_cover_uniform_exact
   have hinj : Set.InjOn p (↑I : Set (Σ _ : α, β)) :=
     Finset.injOn_of_surjOn_of_card_le p hmaps hsurj (by rw [hIcard])
   intro c hc d hd hcd
+  change Disjoint (B c) (B d)
   rw [Finset.disjoint_left]
   intro y hyc hyd
   have hcy : (⟨c, y⟩ : Σ _ : α, β) ∈ I := by
