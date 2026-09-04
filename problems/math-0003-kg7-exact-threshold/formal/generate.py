@@ -97,8 +97,7 @@ def monochromatic (colour : BitVec 105) (es : List Nat) : Bool :=
 /-- Every red/blue edge coloring contains a monochromatic C3 or C5. -/
 theorem odd_cycle_ramsey (colour : BitVec 105) :
     certificate.any (fun q => monochromatic colour q.2) = true := by
-  simp only [certificate, List.any_cons, List.any_nil, monochromatic,
-    List.all_cons, List.all_nil]
+  EXPAND_CIRCUIT
   bv_decide
 
 /-- Five-color masks for the first 2-fold coloring. -/
@@ -139,6 +138,21 @@ theorem upper_palettes_cover : palettesCover = true := by decide
 
 end KG7
 '''
+
+def chain(op, xs, unit):
+    acc = unit
+    for x in reversed(xs):
+        acc = f'({x} {op} {acc})'
+    return acc
+
+monos = []
+for es in CE:
+    blue = chain('&&', [f'colour.getLsbD {e}' for e in es], 'true')
+    red = chain('&&', [f'!colour.getLsbD {e}' for e in es], 'true')
+    monos.append(f'({blue} || {red})')
+circuit = chain('||', monos, 'false')
+# `change` is accepted only if Lean checks definitional equality with the list predicate.
+text = text.replace('EXPAND_CIRCUIT', 'change ' + circuit + ' = true')
 p = Path(__file__).parent
 (p / 'KG7.lean').write_text(text)
 (p / 'certificate.json').write_text(json.dumps(
