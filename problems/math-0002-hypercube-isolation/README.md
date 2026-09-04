@@ -6,8 +6,8 @@
 |---|---|
 | Problem | `refuted`: the universal equality fails |
 | Structural result | exact equivalence with radius-covering arrays; infinite Hamming-family, quantitative-gap, and phase-transition theorems proved on paper |
-| Formal verification | coordinate-copy theorem and graph/coding bridge kernel-checked; quantitative algebra checked; finite `(6,2)` certificate complete |
-| Novelty | `CAN_1(4,6,2)=5` is 2010 prior art; structural package is candidate new and requires specialist/author confirmation |
+| Formal verification | coordinate-copy theorem and graph/coding bridge kernel-checked; local quantitative algebra checked; finite `(6,2)` certificate complete |
+| Novelty | ordinary face-transversal and radius-covering-array formulations are prior art; the perfect-code obstruction and quantitative graph-isolation package are candidate new |
 | External review | none yet |
 
 ## Original question
@@ -25,7 +25,7 @@ for every `0<k<n`.
 
 Let `CAN_r(m,n,2)` denote the minimum number of rows in a binary
 radius-covering array of strength `m`, length `n`, and radius `r`. The central
-structural theorem is
+structural identity is
 
 ```text
 ι(Q_n,Q_k)=CAN_1(n-k,n,2).
@@ -38,6 +38,12 @@ The reason is exact: every copy of a hypercube inside a hypercube is a
 coordinate subcube, and the distance from a word to a face equals the Hamming
 distance between its restriction to the fixed coordinates and the face
 pattern.
+
+The radius-zero version of this geometry is established prior art: ordinary
+binary covering arrays have long been described as transversals of cube faces.
+The contribution here is therefore not the first covering-array/cube-face
+connection. It is the radius-neighborhood formulation for graph isolation and
+the structural consequences drawn from it.
 
 The full manuscript is in [`paper/draft.md`](paper/draft.md), with modular
 proofs in [`proof/structural-theory.md`](proof/structural-theory.md) and
@@ -124,7 +130,7 @@ counterexample directly auditable.
 
 ## Lean verification
 
-The formal package now contains:
+The formal package contains:
 
 - [`CubeCopies.lean`](formal/HypercubeIsolation/CubeCopies.lean): every
   injective edge-preserving map `Q_k→Q_n` is a coordinate embedding;
@@ -132,8 +138,9 @@ The formal package now contains:
   the exact distance-to-face identity, the coordinate-face/radius-covering
   equivalence, and perfect-code volume arithmetic;
 - [`QuantitativeGap.lean`](formal/HypercubeIsolation/QuantitativeGap.lean):
-  the algebra combining the pair-count bounds and exact coefficients for
-  `m=7,15,31,63`;
+  the pointwise overlap estimate, deletion-count rescaling, packing
+  rearrangement, quadratic monotonicity, final algebra, and exact coefficients
+  for `m=7,15,31,63`;
 - [`HypercubeIsolation.lean`](formal/HypercubeIsolation.lean): the finite
   `(6,2)` witness and exhaustive lower bound.
 
@@ -142,25 +149,29 @@ classical/extensionality axioms from Mathlib. The exhaustive finite lower bound
 still uses `native_decide`; its generated axiom is explicitly disclosed, and
 an independent Python search reproduces the result.
 
-The remaining end-to-end formalization target is the incidence-counting and
-sphere-packing proof of the quantitative theorem.
+The remaining end-to-end formalization target is the finite incidence
+machinery joining the local multiplicity lemmas to the global pair counts and
+the graph independence bound.
 
 ## Prior-art correction
 
 The first pass searched only graph-isolation terminology and therefore missed
-the coding-theory name of the same finite object. The corrected records are in
+both the coding-theory name of the radius-one object and the older ordinary
+face-transversal formulation. The corrected records are in
 [`references/NOVELTY.md`](references/NOVELTY.md) and
 [`references/RADIUS_COVERING_ARRAYS.md`](references/RADIUS_COVERING_ARRAYS.md).
 In particular:
 
-- radius-covering arrays were defined and tabulated by
-  Colbourn--Kéri--Rivas Soriano--Schlage-Puchta in 2010;
-- their table records `CAN_1(4,6,2)=5`;
+- Lawrence--Kacker--Lei--Kuhn--Forbes describe binary covering arrays as
+  hypercube face transversals;
+- Colbourn--Kéri--Rivas Soriano--Schlage-Puchta define and classify
+  radius-covering arrays;
+- their tables record `CAN_1(4,6,2)=5`;
 - their Theorem 7.3 proves `CAN_r(m,m+1,2)=K_2(m,r)`.
 
-No priority claim should be made for the graph/coding bridge or new structural
-theorems until coding theorists, graph theorists, and the authors of the 2026
-problem review them.
+No priority claim should be made for the perfect-code obstruction or new
+structural consequences until coding theorists, graph theorists, and the
+authors of the 2026 problem review them.
 
 ## Build
 
