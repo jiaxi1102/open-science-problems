@@ -23,6 +23,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify an exact sharpness witness
+        shell: bash
+        working-directory: problems/math-0002-kneser-fractional-cover/verification
+        run: |
+          g++ -O3 -std=c++20 -Wall -Wextra -pedantic \
+            sharpness_witness.cpp -o sharpness_witness
+          ./sharpness_witness | tee sharpness-verification.txt
+          grep -F 'SHARP triangle_free=1 alpha0=10 alpha1=10 nodes0=411 nodes1=267' \
+            sharpness-verification.txt
+
       - name: Run independent exhaustive NAE-SAT verifier
         shell: bash
         working-directory: problems/math-0002-kneser-fractional-cover/verification
