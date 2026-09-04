@@ -1,122 +1,217 @@
-# Hypercube subcube isolation is a radius-covering-array problem
+# Hypercube subcube isolation, radius-covering arrays, and perfect-code instability
 
 ## Abstract
 
-Let `Q_n` be the binary `n`-cube, and let `ι(Q_n,Q_k)` be the minimum size of a vertex set `D` such that `Q_n-N[D]` contains no copy of `Q_k`. Brešar and Rall asked whether
+Let `Q_n` be the binary `n`-cube and let `ι(Q_n,Q_k)` be the minimum size of
+a vertex set `D` for which `Q_n-N[D]` contains no copy of `Q_k`. Brešar and
+Rall asked whether
 
 ```text
-ι(Q_n,Q_k)=γ(Q_{n-k})
+ι(Q_n,Q_k)=γ(Q_(n-k))
 ```
 
-for every `0<k<n`. We give an exact dictionary between this graph parameter and a classical coding/design parameter:
+for every `0<k<n`. We identify the isolation parameter exactly with a
+classical coding/design parameter:
 
 ```text
 ι(Q_n,Q_k)=CAN_1(n-k,n,2)=σ_2(n,n-k;1),
 ```
 
-where `CAN_1` is the binary radius-one covering-array number and `σ_2` is the equivalent generalized-surjective-code number. This identification turns the proposed equality into the assertion that adding `k` coordinates never increases a radius-covering-array number.
+where `CAN_1` is the binary radius-one covering-array number and `σ_2` is the
+equivalent generalized-surjective-code number. Thus the proposed equality
+asks whether an optimal radius-one covering code remains optimal after an
+arbitrary number of robust coordinate extensions.
 
-The dictionary immediately resolves the question negatively. Published 2010 classification data give
-
-```text
-ι(Q_6,Q_2)=CAN_1(4,6,2)=5>4=γ(Q_4),
-```
-
-and, more strongly,
+This dictionary resolves the question negatively. A 2010 classification gives
 
 ```text
-ι(Q_5,Q_1),…,ι(Q_10,Q_6) = 4,5,6,6,7,8
+ι(Q_6,Q_2)=CAN_1(4,6,2)=5>4=γ(Q_4).
 ```
 
-along the codimension-four diagonal. For every fixed codimension `m≥4`, we prove
+More structurally, a sphere-packing obstruction shows that at every binary
+Hamming length `m=2^t-1`, `t≥3`,
 
 ```text
-ι(Q_n,Q_{n-m})=Θ_m(log n),
+ι(Q_(m+k),Q_k)=γ(Q_m)  if and only if  k=1.
 ```
 
-whereas the value is constant for `m≤3`. Hence the gap from `γ(Q_m)` is not merely positive: it is unbounded. We also formulate the corresponding dictionary for `q`-ary Hamming graphs and distance-`r` isolation, exposing a general constant-to-logarithmic phase transition.
+We strengthen this to an explicit lower bound. Writing
 
-The small binary counterexample has an independent Lean 4 certificate. Formalization of the general dictionary and asymptotic theorem is in progress.
+```text
+K=γ(Q_m)=2^m/(m+1),
+```
 
-## 1. Definitions
+for every `k≥2`,
 
-Write the vertices of `Q_n` as `{0,1}^n`, with two words adjacent exactly when their Hamming distance is one. For a graph `G`, let `N[D]` denote the union of the closed neighborhoods of vertices in `D`. A set `D⊆V(G)` is `H`-isolating when `G-N[D]` contains no subgraph isomorphic to `H`; the minimum size of such a set is `ι(G,H)`.
+```text
+ι(Q_(m+k),Q_k)
+  ≥ K + ceil(3K m(m-3) / [4(m+2)(m+1)^4]).
+```
 
-An `M×n` binary array is a radius-one covering array of strength `m`, written `CA_1(M;m,n,2)`, when every restriction to `m` columns has the following property: every binary `m`-tuple is at Hamming distance at most one from at least one row. The minimum possible `M` is `CAN_1(m,n,2)`. Equivalently, the set of rows is an `m`-surjective binary code of radius one, whose minimum cardinality is denoted `σ_2(n,m;1)`.
+Hence the additive failure is `Ω(2^m/m^4)` along an infinite family. In a
+different regime, for every fixed codimension `m≥4`, the isolation number is
+`Θ_m(log n)`, whereas it is constant for `m≤3`. This gives a sharp
+constant-to-logarithmic phase transition and an unbounded ratio to
+`γ(Q_m)`.
+
+Lean 4 formalizes the coordinate-copy theorem for embedded cubes, the exact
+coordinate-face/radius-covering-array equivalence, the arithmetic core of the
+perfect-code obstruction, the algebra of the quantitative bound, and the
+finite `(n,k)=(6,2)` certificate. The full incidence-counting proof of the
+quantitative estimate remains to be formalized.
+
+## 1. Introduction
+
+For a graph `G`, a set `D⊆V(G)` is `H`-isolating if deleting the closed
+neighborhood `N[D]` leaves no subgraph isomorphic to `H`. The least possible
+size is denoted `ι(G,H)`. Brešar and Rall established the lower bound
+
+```text
+ι(Q_n,Q_k)≥γ(Q_(n-k))
+```
+
+and asked whether equality always holds.
+
+The central point of this paper is that the hypercube problem is not an
+isolated domination problem. It is exactly a radius-covering-array problem.
+This translation imports constructions, classifications, and lower-bound
+methods from coding and design theory, while the graph formulation supplies a
+new geometric interpretation: radius-covering arrays are precisely sets whose
+metric neighborhoods meet every subcube of a prescribed codimension.
+
+The finite counterexample `ι(Q_6,Q_2)=5` was independently rediscovered during
+this project, but is not a new numerical result: it appears in a 2010
+radius-covering-array classification. The candidate new contribution is the
+exact graph/coding dictionary and the structural theorems derived from it,
+particularly the complete Hamming-length equality classification and the
+quantitative exponential additive gap.
+
+## 2. Definitions
+
+Identify `V(Q_n)` with `{0,1}^n`, with adjacency given by Hamming distance one.
+For `r≥0`, write `N_r[D]` for the set of vertices at distance at most `r` from
+`D`. For `0≤m≤n`, define
+
+```text
+I_r(n,m)=min{|D| : Q_n-N_r[D] contains no copy of Q_(n-m)}.
+```
 
 Thus
 
 ```text
-CAN_1(m,n,2)=σ_2(n,m;1).
+ι(Q_n,Q_k)=I_1(n,n-k).
 ```
 
-## 2. Copies of a cube inside a cube
+An `M×n` binary array is a radius-`r` covering array of strength `m`, written
+`CA_r(M;m,n,2)`, when every restriction to `m` columns radius-`r` covers every
+binary `m`-tuple. Let `CAN_r(m,n,2)` be the minimum possible `M`.
+Equivalently, its rows form an `m`-surjective binary code of radius `r`; the
+minimum cardinality is denoted `σ_2(n,m;r)`. Hence
 
-### Lemma 2.1 — coordinate-subcube lemma
+```text
+CAN_r(m,n,2)=σ_2(n,m;r).
+```
+
+## 3. Every embedded cube is a coordinate cube
+
+### Lemma 3.1 — coordinate-copy theorem
 
 Every subgraph of `Q_n` isomorphic to `Q_k` is a coordinate `k`-face.
 
 ### Proof
 
-Let `f:Q_k→Q_n` be an injective edge-preserving map. At a vertex `x∈Q_k`, the `k` incident edges in the different domain directions must map to edges in `k` distinct ambient coordinates.
+Let `f:Q_k→Q_n` be an injective edge-preserving map. Label an ambient edge by
+the unique coordinate that it flips. At any image vertex, the `k` intrinsic
+edge directions receive distinct ambient labels, because two different domain
+neighbors cannot have the same image.
 
-Consider a domain square generated by directions `i` and `j`. If the two edges from `f(x)` flip ambient coordinates `p` and `q`, then their other endpoints are at Hamming distance two. In a binary cube they have exactly two common neighbors: `f(x)` and the vertex obtained by flipping both `p` and `q`. Injectivity forces the fourth image vertex to be the latter. Consequently opposite edges of the square flip the same ambient coordinate.
+Consider a domain square generated by directions `i` and `j`. If the two edges
+from one image vertex flip ambient coordinates `p` and `q`, then their other
+endpoints have exactly two common neighbors in the binary cube: the original
+vertex and the vertex obtained by flipping both `p` and `q`. Injectivity forces
+the fourth image vertex to be the latter. Therefore opposite sides of every
+image square carry the same label.
 
-Propagating through the connected cube shows that every domain direction `i` always flips one fixed ambient coordinate `p_i`, and the `p_i` are distinct. Hence the image of `f` is obtained by fixing the other `n-k` coordinates. ∎
+All edges in one intrinsic direction are connected by a sequence of
+opposite-edge moves through domain squares. They consequently share one fixed
+ambient label. The labels for the `k` directions are distinct, and following a
+path from the image of `0^k` shows that `f` independently toggles precisely
+those `k` ambient coordinates. Its image is a coordinate face. ∎
 
-## 3. The exact dictionary
+This statement is formalized in Lean as
+`CubeEmbedding.is_coordinate_copy`.
 
-Let `m=n-k`. A coordinate `k`-face is specified by a set `J⊆[n]` of `m` fixed coordinates and a word `x∈{0,1}^J`:
+## 4. Exact graph/coding dictionary
+
+Let `m=n-k`. A coordinate `k`-face is determined by an `m`-set `S` of fixed
+coordinates and a pattern `a∈{0,1}^S`:
 
 ```text
-F(J,x)={y∈{0,1}^n : y|_J=x}.
+F(S,a)={x∈{0,1}^n : x|_S=a}.
 ```
 
 For any `d∈Q_n`,
 
 ```text
-N[d]∩F(J,x)≠∅  iff  d_H(d|_J,x)≤1.
+dist(d,F(S,a))=d_H(d|_S,a).                                  (2)
 ```
 
-Indeed, the distance from `d` to `F(J,x)` is exactly the number of mismatches between `d|_J` and `x`; all free coordinates can be chosen to agree with `d`.
+Indeed, every disagreement on `S` is unavoidable, while all free coordinates
+can be chosen to agree with `d`.
 
-### Theorem 3.1 — isolation/covering-array equivalence
+### Theorem 4.1 — isolation/covering-array equivalence
 
-For every `0<k<n`, with `m=n-k`,
+For every `0≤m≤n` and `r≥0`,
 
 ```text
-ι(Q_n,Q_k)=CAN_1(m,n,2)=σ_2(n,m;1).
+I_r(n,m)=CAN_r(m,n,2)=σ_2(n,m;r).                             (3)
+```
+
+In particular,
+
+```text
+ι(Q_n,Q_k)=CAN_1(n-k,n,2).                                    (4)
 ```
 
 ### Proof
 
-By Lemma 2.1, `D` is `Q_k`-isolating precisely when `N[D]` meets every coordinate `k`-face `F(J,x)`. By the preceding distance identity, this is equivalent to requiring that for every `m`-set `J` of coordinates and every `x∈{0,1}^J`, some row `d∈D` satisfies `d_H(d|_J,x)≤1`. This is exactly the definition of a binary radius-one covering array of strength `m`. ∎
+By Lemma 3.1, it is enough to meet every coordinate face `F(S,a)`. By (2),
+`N_r[D]` meets `F(S,a)` exactly when some row `d∈D` satisfies
 
-### Interpretation of the Brešar–Rall bound
+```text
+d_H(d|_S,a)≤r.
+```
 
-Since deleting columns cannot destroy the radius-covering property,
+Requiring this for every `S` and `a` is exactly the radius-covering-array
+condition. Taking minima proves (3). ∎
+
+The distance-to-face identity and the equivalence for coordinate faces are
+formalized in Lean as `exists_near_face_iff` and
+`hitsAllCodimFaces_iff_radiusCoveringArray`; Lemma 3.1 supplies the remaining
+bridge from arbitrary graph copies to coordinate faces.
+
+### Corollary 4.2 — interpretation of the Brešar–Rall bound
+
+A dominating set of `Q_m` is a binary radius-one covering code, so
+
+```text
+γ(Q_m)=K_2(m,1)=CAN_1(m,m,2).
+```
+
+Deleting columns preserves the radius-covering property, and therefore
 
 ```text
 CAN_1(m,n,2)≥CAN_1(m,m,2).
 ```
 
-But `CAN_1(m,m,2)` is the minimum size of a radius-one covering code in `Q_m`, namely `K_2(m,1)=γ(Q_m)`. Thus the published lower bound
+Under (4), this is exactly the Brešar–Rall lower bound. Their equality question
+asks whether adding columns can always preserve the optimal covering-code
+cardinality.
 
-```text
-ι(Q_n,Q_k)≥γ(Q_{n-k})
-```
+## 5. The first failure and known exact values
 
-is exactly the elementary monotonicity inequality
-
-```text
-CAN_1(m,n,2)≥CAN_1(m,m,2).
-```
-
-The proposed equality asks whether this monotonicity is always equality.
-
-## 4. Resolution and exact codimension-four values
-
-Colbourn, Kéri, Rivas Soriano, and Schlage-Puchta classified small binary radius-covering arrays in 2010. Their table gives
+Colbourn, Kéri, Rivas Soriano, and Schlage-Puchta classified small binary
+radius-covering arrays in 2010. Their tables give
 
 ```text
 CAN_1(4,5,2)=4,
@@ -127,181 +222,386 @@ CAN_1(4,9,2)=7,
 CAN_1(4,10,2)=8.
 ```
 
-Applying Theorem 3.1 yields
+The dictionary yields
 
 ```text
-ι(Q_5,Q_1)=4,
-ι(Q_6,Q_2)=5,
-ι(Q_7,Q_3)=6,
-ι(Q_8,Q_4)=6,
-ι(Q_9,Q_5)=7,
-ι(Q_10,Q_6)=8.
+ι(Q_5,Q_1),…,ι(Q_10,Q_6)=4,5,6,6,7,8.
 ```
 
-Since `γ(Q_4)=4`, equality holds at codimension four for the one-coordinate extension `Q_5`, but already fails for every displayed `n≥6`.
-
-The classification also reports exactly one equivalence class of `CA_1(5;4,6,2)`. Under the graph dictionary, this says that a minimum `Q_2`-isolating set of `Q_6` is unique up to automorphisms of the cube. One representative is
+Since `γ(Q_4)=4`, the conjectured equality holds for the one-coordinate
+extension and fails at `(n,k)=(6,2)`. One minimum witness is
 
 ```text
 {000000,000011,000101,111001,111110}.
 ```
 
-The Lean certificate in this repository verifies directly that this set works and that no four-vertex set works.
+The classification reports one equivalence class of `CA_1(5;4,6,2)`. Its
+standard row/column/symbol equivalences correspond to row reordering and cube
+automorphisms, so the minimum isolating set is unique up to automorphism of
+`Q_6`.
 
-## 5. A constant-to-logarithmic phase transition
+The repository contains an independent Lean finite certificate and Python
+enumeration. These verify the value but do not establish novelty, because the
+value was already present in the 2010 tables.
 
-For fixed codimension `m`, define
+## 6. A perfect-code obstruction to robust extension
+
+For the `q`-ary Hamming space, define the ball volume
 
 ```text
-I_m(n)=ι(Q_n,Q_{n-m})=CAN_1(m,n,2).
+V_q(N,R)=sum_{i=0}^R binom(N,i)(q-1)^i.
 ```
 
-### Proposition 5.1 — the constant regime
+### Theorem 6.1 — perfect-code extension obstruction
 
-For every admissible `n`,
+Suppose a perfect `q`-ary radius-`r` covering code of length `m` exists, so
 
 ```text
-I_1(n)=1,
-I_2(n)=I_3(n)=2.
+K_q(m,r)V_q(m,r)=q^m.                                         (5)
+```
+
+Let `ell≥1`. If
+
+```text
+V_q(m+ell,r+floor(ell/2)) > q^ell V_q(m,r),                   (6)
+```
+
+then
+
+```text
+CAN_r(m,m+ell,q)>K_q(m,r).                                    (7)
 ```
 
 ### Proof
 
-For `m=1`, one row is within distance one of both one-bit words. For `m=2,3`, the two constant rows `0^n` and `1^n` work: every binary word of length at most three has weight at most one or co-weight at most one. One row cannot cover `Q_m` when `m≥2`. ∎
+Assume an array with `M=K_q(m,r)` rows exists. Project it onto any `m`
+columns. The `M` radius-`r` balls cover `q^m` words, while their total volume
+counted with multiplicity is `MV_q(m,r)=q^m` by (5). Hence the projected balls
+are pairwise disjoint: every `m`-column projection is a perfect code and has
+minimum distance at least `2r+1`.
 
-### Theorem 5.2 — logarithmic growth for every fixed `m≥4`
-
-For fixed `m≥4`, as `n→∞`,
-
-```text
-I_m(n)=Θ_m(log n).
-```
-
-More explicitly, every `M`-row radius-one covering array satisfies
+Take two distinct full rows at distance `d`. Delete `ell` coordinates
+containing as many of their disagreements as possible. The projected distance
+must remain at least `2r+1`, so
 
 ```text
-n≤(m-1)2^(M-1),
+d≥2r+1+ell.                                                    (8)
 ```
 
-and an `M`-row array exists whenever
+Therefore radius-`r+floor(ell/2)` balls around the full rows are disjoint in
+length `m+ell`. The Hamming packing bound gives
 
 ```text
-2^m * binom(n,m) * (1-(m+1)/2^m)^M < 1.
+M V_q(m+ell,r+floor(ell/2))≤q^(m+ell).
 ```
 
-Consequently,
+Substituting (5) contradicts (6). ∎
+
+### Corollary 6.2 — q-ary Hamming lengths
+
+Let `q` be a prime power and
 
 ```text
-1+ceil(log_2(n/(m-1))) ≤ I_m(n)
+m=(q^t-1)/(q-1),       t≥3.
 ```
 
-and
+Then
 
 ```text
-I_m(n) ≤ [m/(-log_2(1-(m+1)/2^m))] log_2 n + O_m(1).
+CAN_1(m,m+2,q)>K_q(m,1).                                      (9)
 ```
 
-### Proof: lower bound
-
-Take an `M×n` binary radius-one covering array. Complement columns independently so that its first row becomes all zero; this preserves the property. There are only `2^(M-1)` possible normalized column types.
-
-If one type occurred in at least `m` columns, then on those columns every row would be either `0^m` or `1^m`. The word
+The `q`-ary Hamming code is perfect, and direct algebra gives
 
 ```text
-1100…0
+V_q(m+2,2)-q^2V_q(m,1)
+  = (q-1)^2 m(m+1-2q)/2 > 0.
 ```
 
-is at distance two from `0^m` and at distance `m-2≥2` from `1^m`. It would therefore be uncovered. Hence each normalized type occurs at most `m-1` times, proving
+Thus Theorem 6.1 applies with `ell=2`.
+
+The binary polynomial identity underlying this obstruction and its positivity
+for `m≥4` are kernel-checked in Lean.
+
+### Corollary 6.3 — complete equality classification at binary Hamming codimensions
+
+Let `m=2^t-1`, `t≥3`. For every `k≥1`,
 
 ```text
-n≤(m-1)2^(M-1).
+ι(Q_(m+k),Q_k)=γ(Q_m)  if and only if  k=1.                  (10)
 ```
 
-### Proof: upper bound
-
-Choose `M` independent uniformly random binary rows of length `n`. Fix an `m`-set of columns and a target word. A random row lies in its radius-one Hamming ball with probability `(m+1)/2^m`, so the target is missed by every row with probability
+For `k=1`, the equality
 
 ```text
-(1-(m+1)/2^m)^M.
+CAN_r(m,m+1,2)=CAN_r(m,m,2)
 ```
 
-There are `2^m binom(n,m)` choices of a column set and target. The union bound shows that if the displayed product is below one, an array with no missed target exists. ∎
+is the parity-extension theorem of Colbourn et al. For `k=2`, strictness
+follows from Corollary 6.2. For every `k>2`, it follows by monotonicity under
+adding columns.
 
-### Corollary 5.3 — the conjectured gap is unbounded
+This gives an infinite and structurally explained family of counterexamples,
+rather than an isolated small example.
 
-For every fixed `m≥4`,
+## 7. Quantitative instability at Hamming lengths
+
+The preceding theorem proves a gap of at least one. Simultaneous control of all
+`m`-column projections forces a much larger gap.
+
+### Theorem 7.1 — quantitative Hamming-family gap
+
+Let
 
 ```text
-ι(Q_n,Q_{n-m})-γ(Q_m) → ∞
+m=2^t-1,  t≥3,
+K=γ(Q_m)=2^m/(m+1).
 ```
 
-as `n→∞`.
-
-In particular, the proposed universal equality does not fail only at an exceptional small cube. For every fixed nontrivial codimension `m≥4`, its right-hand side stays constant while its left-hand side diverges.
-
-An explicit sufficient condition for strict inequality is
+Then for every `k≥2`,
 
 ```text
-n>(m-1)2^(γ(Q_m)-1).
+ι(Q_(m+k),Q_k)
+ ≥ K + ceil(3K m(m-3) / [4(m+2)(m+1)^4]).                   (11)
 ```
 
-## 6. Hamming graphs and larger neighborhoods
-
-Let `H(n,q)=K_q □···□ K_q` be the `q`-ary Hamming graph. Define `ι_r(H(n,q),H(k,q))` by replacing `N[D]` with the distance-`r` neighborhood of `D`.
-
-The coordinate-subcube proof extends to Hamming graphs: a copy of `H(k,q)` uses `k` fixed ambient coordinate directions, and every such copy is a coordinate Hamming subspace. The distance from a word to the subspace is the Hamming distance on its fixed coordinates. Therefore
+In particular,
 
 ```text
-ι_r(H(n,q),H(k,q))=CAN_r(n-k,n,q)=σ_q(n,n-k;r).
+ι(Q_(m+k),Q_k)-γ(Q_m)=Ω(2^m/m^4).                            (12)
 ```
 
-For fixed `q,m,r`, let
+### Proof
+
+By monotonicity, it is enough to prove (11) for `k=2`. Set `n=m+2`, let `A`
+be an optimal `M×n` radius-one covering array with distinct rows, and write
+`M=K+s`.
+
+For each pair `D` of deleted coordinates and `y∈Q_m`, let `c_D(y)` be the
+number of projected rows within distance one of `y`. Every target is covered,
+and double-counting radius-one incidences gives
 
 ```text
-J_{q,m,r}(n)=ι_r(H(n,q),H(n-m,q)).
+sum_y(c_D(y)-1)=(m+1)s.                                      (13)
 ```
 
-The same repeated-column and random-array arguments give a general phase transition:
-
-* if `m≤r`, then `J_{q,m,r}(n)=1`;
-* in the repetition-code regime `r<m<q(r+1)/(q-1)`, it is the constant `q`;
-* once `m≥q(r+1)/(q-1)`, it is `Θ_{q,m,r}(log n)`.
-
-The binary closed-neighborhood theorem is the case `q=2`, `r=1`, whose threshold is exactly `m=4`.
-
-## 7. Formal-verification boundary
-
-The current Lean 4 development verifies the finite statement
+Define
 
 ```text
-ι(Q_6,Q_2)=5 and γ(Q_4)=4
+P_D=sum_y binom(c_D(y),2).
 ```
 
-inside the exact projection model. The five-vertex witness and the `Q_4` domination facts reduce in the kernel. The exhaustive four-vertex exclusion currently uses `native_decide`; an independent Python enumeration reproduces it.
+For fixed `y`, its `m+1` possible projected centers each have at most four
+full-row lifts, so `c_D(y)≤4(m+1)`. Therefore
 
-The next formalization milestones are:
+```text
+P_D≤2(m+1)^2s.                                                (14)
+```
 
-1. define coordinate faces and radius-covering arrays for arbitrary finite dimensions;
-2. prove the distance-to-face identity;
-3. formalize the coordinate-subcube lemma for embeddings of hypercubes;
-4. prove the exact dictionary theorem;
-5. formalize the repeated-column lower bound;
-6. replace the finite `native_decide` exclusion with the structural argument or a kernel-checked certificate.
+Let `e_D` count row pairs whose projected distance is at most two. Their
+radius-one balls have at least two common words, hence
 
-Until these steps are complete, the general theorem is human-checked rather than end-to-end Lean-checked.
+```text
+e_D≤(m+1)^2s.                                                 (15)
+```
 
-## 8. Provenance and novelty discipline
+Let `e` count full-row pairs at distance at most four. Every such pair is
+counted in at least six of the `e_D`: at distance four, delete any two of the
+four disagreements; smaller distances give no fewer choices. Summing (15),
 
-The small value `CAN_1(4,6,2)=5` and its uniqueness classification are not new: they occur in the 2010 radius-covering-array literature. The original repository search missed this because it searched only graph-isolation terminology. The novelty record must therefore distinguish:
+```text
+6e≤binom(m+2,2)(m+1)^2s.                                     (16)
+```
 
-* **known:** radius-covering-array definitions, coding-theoretic bounds, and classified small values;
-* **independently rediscovered:** the five-row `Q_6` witness and exhaustive finite check;
-* **candidate new contribution:** the exact graph/coding dictionary, its use to resolve Brešar–Rall Problem 2, and the graph-theoretic phase-transition formulation.
+Now form a graph on the `M` rows, joining pairs at distance at most four. An
+independent set is a length-`m+2` binary code of minimum distance at least
+five. Radius-two sphere packing bounds its independence number by
 
-Priority for the dictionary itself still requires expert and author confirmation.
+```text
+alpha≤2^(m+2)/V,
+V=1+(m+2)+binom(m+2,2).
+```
+
+Caro--Wei and Cauchy--Schwarz give
+
+```text
+alpha≥M^2/(M+2e),
+```
+
+and consequently
+
+```text
+e≥(M^2V/2^(m+2)-M)/2
+ ≥K m(m-3)/[16(m+1)].                                       (17)
+```
+
+Combining (16) and (17), then using
+`binom(m+2,2)=(m+2)(m+1)/2`, yields
+
+```text
+s≥3K m(m-3)/[4(m+2)(m+1)^4].
+```
+
+Taking the ceiling proves (11). ∎
+
+For example, the theorem forces an excess of at least `1263` rows at `m=31`
+and at least `374,653,301,052` rows at `m=63`. The first two small Hamming
+lengths only give a one-row improvement; published computation is stronger at
+`m=7`, where `21≤CAN_1(7,9,2)≤24`.
+
+The complete incidence proof is recorded separately in
+[`../proof/quantitative-hamming-gap.md`](../proof/quantitative-hamming-gap.md).
+Lean currently verifies the final algebraic implication and the exact
+coefficients for `m=7,15,31,63`; formalization of the incidence counts is the
+next major verification milestone.
+
+## 8. Fixed-codimension phase transition
+
+For fixed `m,r`, put
+
+```text
+J_(m,r)(n)=I_r(n,m)=CAN_r(m,n,2).
+```
+
+### Theorem 8.1 — constant-to-logarithmic transition
+
+As `n→∞`,
+
+```text
+J_(m,r)(n)=
+  1                 if m≤r,
+  2                 if r<m≤2r+1,
+  Θ_(m,r)(log n)    if m≥2r+2.                               (18)
+```
+
+### Proof
+
+If `m≤r`, one row covers every projected word. If `r<m≤2r+1`, one row is
+insufficient, while the complementary constant rows `0^n,1^n` work because
+every binary word of length `m` is within distance `floor(m/2)≤r` of one of
+them.
+
+Assume `m≥2r+2` and let an `M×n` radius-covering array be given. Complement
+columns independently so that its first row is zero. There are only
+`2^(M-1)` normalized column types. No type can occur in `m` columns: on such a
+restriction every row would be either `0^m` or `1^m`, while a word of weight
+`r+1` is farther than `r` from both. Hence
+
+```text
+n≤(m-1)2^(M-1),                                               (19)
+```
+
+which gives `M=Ω(log n)`.
+
+For the upper bound, choose `M` independent uniformly random rows. A fixed
+target on a fixed `m`-set of columns is covered by one row with probability
+
+```text
+B(m,r)/2^m,
+B(m,r)=sum_{j=0}^r binom(m,j).
+```
+
+The union bound shows existence whenever
+
+```text
+2^m binom(n,m)(1-B(m,r)/2^m)^M<1,                            (20)
+```
+
+so `M=O(log n)`. ∎
+
+### Corollary 8.2 — ordinary isolation
+
+For closed-neighborhood subcube isolation,
+
+```text
+ι(Q_n,Q_(n-m))=
+  1             if m=1,
+  2             if m=2 or 3,
+  Θ_m(log n)    if m≥4.                                      (21)
+```
+
+For every fixed `m≥4`, therefore,
+
+```text
+ι(Q_n,Q_(n-m))/γ(Q_m)→∞.                                    (22)
+```
+
+A direct sufficient condition for strict inequality is
+
+```text
+n>(m-1)2^(γ(Q_m)-1).                                         (23)
+```
+
+The logarithmic order is consistent with and, in special parameter regimes,
+weaker than established coding-theoretic asymptotic bounds. The contribution
+here is its exact interpretation as a phase transition in subcube isolation.
+
+## 9. Formal verification
+
+The Lean development has four layers.
+
+1. `CubeCopies.lean` represents cube vertices as finite coordinate sets and
+   proves that every injective edge-preserving map `Q_k→Q_n` is a coordinate
+   embedding.
+2. `StructuralTheory.lean` proves the exact distance-to-face identity and the
+   coordinate-face/radius-covering-array equivalence, plus the arithmetic
+   volume obstruction.
+3. `QuantitativeGap.lean` kernel-checks the algebra combining the two pair-count
+   inequalities and evaluates the explicit Hamming-length coefficients.
+4. `HypercubeIsolation.lean` verifies the finite `(6,2)` witness and exhaustive
+   lower bound. The exhaustive part uses `native_decide`; the structural
+   theorems use only the standard classical/extensionality axioms reported by
+   Mathlib.
+
+The current formal boundary is explicit: the exact dictionary is structurally
+formalized, but cardinal minimization and the full incidence/sphere-packing
+argument of Theorem 7.1 are not yet assembled end to end in Lean.
+
+## 10. Provenance and claim discipline
+
+The following are known inputs:
+
+- definitions and elementary properties of radius-covering arrays and
+  generalized surjective codes;
+- the parity-extension equality `CAN_r(m,m+1,2)=K_2(m,r)`;
+- binary and `q`-ary Hamming perfect codes;
+- the 2010 small-parameter classification, including
+  `CAN_1(4,6,2)=5`;
+- standard sphere-packing and Caro--Wei inequalities.
+
+The following are independently rediscovered or reverified, but not claimed as
+new:
+
+- the five-row `(6,2)` witness;
+- exhaustive nonexistence of a four-row witness;
+- the small exact value and uniqueness after translation from the 2010 table.
+
+The candidate new package is:
+
+- the exact identification of hypercube subcube isolation with
+  radius-covering arrays;
+- the application resolving Brešar–Rall Problem 2;
+- the perfect-code extension obstruction and the `k=1` iff classification at
+  all Hamming codimensions;
+- the quantitative exponential additive gap;
+- the graph-theoretic constant-to-logarithmic phase transition.
+
+Public terminology searches have not yet located this exact package. That is
+not a priority certificate. The paper should be circulated to specialists in
+covering codes, covering arrays, and graph isolation before a public novelty
+claim.
 
 ## References
 
-1. B. Brešar and D. F. Rall, *On the isolation numbers in graph products*, arXiv:2608.25752v1, 2026.
-2. C. J. Colbourn, G. Kéri, P. P. Rivas Soriano, and J.-C. Schlage-Puchta, *Covering and radius-covering arrays: Constructions and classification*, Discrete Applied Mathematics 158 (2010), 1158–1180. DOI: 10.1016/j.dam.2010.03.008.
-3. J. Quistorff and J.-C. Schlage-Puchta, *On generalized surjective codes*, Studia Scientiarum Mathematicarum Hungarica 48 (2011), 75–92. DOI: 10.1556/SScMath.2009.1140.
+1. B. Brešar and D. F. Rall, *On the isolation numbers in graph products*,
+   arXiv:2608.25752v1, 2026.
+2. C. J. Colbourn, G. Kéri, P. P. Rivas Soriano, and J.-C. Schlage-Puchta,
+   *Covering and radius-covering arrays: Constructions and classification*,
+   Discrete Applied Mathematics 158 (2010), 1158–1180.
+3. J. Quistorff and J.-C. Schlage-Puchta, *On generalized surjective codes*,
+   Studia Scientiarum Mathematicarum Hungarica 48 (2011), 75–92.
+4. R. W. Hamming, *Error detecting and error correcting codes*, Bell System
+   Technical Journal 29 (1950), 147–160.
+5. Y. Caro, *New results on the independence number*, Technical Report,
+   Tel-Aviv University, 1979; V. K. Wei, *A lower bound on the stability number
+   of a simple graph*, Bell Laboratories Technical Memorandum, 1981.
