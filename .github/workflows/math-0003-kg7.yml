@@ -1,0 +1,43 @@
+name: math-0003 KG7 exact threshold
+on:
+  push:
+    branches: [research/kg7-exact-threshold-20260904]
+    paths:
+      - problems/math-0003-kg7-exact-threshold/**
+      - .github/workflows/math-0003-kg7.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate explicit theorem and manifest
+        working-directory: problems/math-0003-kg7-exact-threshold/formal
+        run: python3 generate.py
+      - name: Install pinned Lean
+        run: |
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain leanprover/lean4:v4.33.1
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Compile and audit
+        working-directory: problems/math-0003-kg7-exact-threshold/formal
+        env:
+          LEAN_NUM_THREADS: '1'
+        run: |
+          set -o pipefail
+          lean --version | tee verification.log
+          if grep -nE '\b(sorry|admit)\b|^[[:space:]]*axiom[[:space:]]' KG7.lean; then exit 1; fi
+          lean KG7.lean 2>&1 | tee -a verification.log
+          sha256sum KG7.lean certificate.json generate.py lean-toolchain | tee SHA256SUMS
+      - name: Preserve certificate and actual compiler log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kg7-lean-certificate
+          path: |
+            problems/math-0003-kg7-exact-threshold/formal/KG7.lean
+            problems/math-0003-kg7-exact-threshold/formal/certificate.json
+            problems/math-0003-kg7-exact-threshold/formal/verification.log
+            problems/math-0003-kg7-exact-threshold/formal/SHA256SUMS
