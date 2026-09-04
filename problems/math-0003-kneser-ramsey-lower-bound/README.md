@@ -4,7 +4,7 @@
 **Field:** extremal combinatorics / Ramsey theory / Kneser graphs  
 **Original source:** Heath, McCourt, Parker, Schwieder, and Zerbib, *Ramsey Numbers in Kneser Graphs*, arXiv:2510.25734v2  
 **Problem status:** `proposed-proof`  
-**Formal verification:** `finite-gadget-verified`  
+**Formal verification:** `end-to-end-verified`  
 **Novelty:** `search-incomplete`  
 **External review:** `none`
 
@@ -101,15 +101,48 @@ checks all `918` possible labeled trace partitions and independently rebuilds
 and verifies every Kneser triangle for `r=1,2,3,4`. It uses only the Python
 standard library.
 
-## Formalization boundary
+## End-to-end Lean formalization
 
-The Lean component verifies the finite five-point gadget: every three
-pairwise-disjoint five-bit traces whose union has at least three points induce
-both colors. The outer lift to `KG(3r+2,r)` currently uses the written
-cardinality argument that three disjoint `r`-sets leave two points unused.
+The Lean 4.33.1 package now verifies the complete lower-bound chain for an
+arbitrary natural number `r >= 1`:
 
-The intended next formal gate is an end-to-end Lean theorem for arbitrary
-`r`, including the trace-cardinality bridge.
+1. Kneser vertices are represented as `r`-element finsets of `Fin n`.
+2. The five distinguished points are embedded into `Fin (3*r+2)`.
+3. Each vertex is mapped to its five-point trace.
+4. Pairwise-disjoint Kneser vertices are proved to have pairwise-disjoint
+   traces.
+5. A cardinality theorem proves that three disjoint `r`-sets in `3*r+2`
+   points have traces covering at least three distinguished points.
+6. The kernel-checked five-point gadget rules out a monochromatic triangle.
+7. The explicit coloring is packaged as a witness for
+   `KneserRamseyLowerBound r (3*r+3)`.
+
+The final theorem is:
+
+```lean
+theorem kneserRamsey_three_three_lower_bound (r : Nat) (hr : 1 ≤ r) :
+    KneserRamseyLowerBound r (3 * r + 3)
+```
+
+CI builds both `KneserFivePoint` and `KneserFivePoint.LowerBound`, rejects
+`sorry`, `admit`, and hand-written axioms, and performs an axiom audit. The
+final theorem depends only on:
+
+```text
+[propext, Classical.choice, Quot.sound]
+```
+
+There is no `sorryAx` and no native-computation axiom. See
+[`verification-record.md`](verification-record.md) for the reproducible run.
+
+### Formal statement boundary
+
+The formal file defines the lower bound in its direct witness form: a
+symmetric two-coloring of all `r`-subsets of a `(3r+2)`-point set such that
+every triple of pairwise-disjoint vertices receives both colors. This is the
+mathematical content needed to conclude `R_r^{KG}(3,3) >= 3r+3`. It does not
+separately formalize the source paper's least-integer operator and prove an
+API-level equivalence to that notation.
 
 ## Novelty / prior art
 
@@ -125,18 +158,19 @@ to check both novelty and correctness before public priority claims.
 ## Risks and unresolved items
 
 1. The result has not yet been peer reviewed or independently reproduced.
-2. The current Lean boundary checks the finite gadget, not yet the complete
-   arbitrary-`r` lift.
+2. Literature priority remains incomplete despite the targeted negative
+   search.
 3. The matching general upper bound remains open.
-4. The broader fractional-host bridge on the experimental branch remains a
+4. The broader fractional-host bridge on the exploratory branch remains a
    separate theorem candidate with its own novelty burden.
 
 ## Next gates
 
-1. Complete and CI-check the Lean finite gadget.
-2. Formalize the arbitrary-`r` lifting argument end to end.
-3. Obtain independent review from the Kneser-Ramsey paper's authors.
-4. Attack the upper bound `R_r^{KG}(3,3)<=3r+3`, using the five-point gadget
+1. Obtain independent review from the Kneser-Ramsey paper's authors and an
+   unrelated Ramsey-theory expert.
+2. Formalize an optional equivalence to a least-`n` Kneser-Ramsey-number
+   definition, without changing the already verified witness theorem.
+3. Attack the upper bound `R_r^{KG}(3,3)<=3r+3`, using the five-point gadget
    as a guide to the extremal structure.
-5. Determine whether analogous finite trace gadgets sharpen lower bounds for
+4. Determine whether analogous finite trace gadgets sharpen lower bounds for
    `R_r^{KG}(s,t)` beyond the triangle case.
