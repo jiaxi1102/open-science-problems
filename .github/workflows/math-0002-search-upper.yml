@@ -1,0 +1,55 @@
+name: math-0002 exact 17/6 upper-bound search
+
+on:
+  push:
+    branches:
+      - math-0002-strengthen-beta-lower-bound
+    paths:
+      - .github/workflows/math-0002-search-upper.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 7
+      matrix:
+        intersection: [0, 1, 2, 3, 4, 5, 6]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install exact SAT solver
+        run: python -m pip install --disable-pip-version-check python-sat
+
+      - name: Search the canonical symmetry case
+        shell: bash
+        working-directory: problems/math-0002-kneser-fractional-cover/experiments
+        run: |
+          set +e
+          python search_two_kneser_homomorphisms.py \
+            --p 17 --q 6 \
+            --intersection "${{ matrix.intersection }}" \
+            --output "two_kg_17_6_intersection_${{ matrix.intersection }}.json" \
+            2>&1 | tee "search_17_6_intersection_${{ matrix.intersection }}.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          case "$rc" in
+            10) echo "SAT certificate found and independently validated" ;;
+            20) echo "UNSAT for this direct KG(17,6) symmetry case" ;;
+            *)  echo "search failed with exit code $rc"; exit "$rc" ;;
+          esac
+
+      - name: Upload search record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kg-17-6-intersection-${{ matrix.intersection }}
+          path: |
+            problems/math-0002-kneser-fractional-cover/experiments/search_17_6_intersection_${{ matrix.intersection }}.log
+            problems/math-0002-kneser-fractional-cover/experiments/two_kg_17_6_intersection_${{ matrix.intersection }}.json
+          if-no-files-found: warn
