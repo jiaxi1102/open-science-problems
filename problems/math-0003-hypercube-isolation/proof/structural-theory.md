@@ -220,16 +220,19 @@ does not suffice, while the two complementary constant rows cover every
 word: every binary word has distance at most `floor(m/2)<=r` from one of
 them.
 
-Now assume `m>=2r+2`, and let an `M x n` array be radius-covering. A column
-is one of `2^M` binary column types. No type can occur `m` times. If it
-did, selecting those columns would leave only the two constant projected
-rows `0^m` and `1^m`. A word of weight `r+1` is farther than `r` from both,
-because `m-(r+1)>=r+1`. Therefore every type occurs at most `m-1` times,
-and
+Now assume `m>=2r+2`, and let an `M x n` array be radius-covering. Complement
+each column independently when its entry in the first row is one. This is an
+isometry in every projection, and afterward the first row is zero in every
+column. Hence only `2^(M-1)` normalized column types remain.
+
+No normalized type can occur `m` times. If it did, selecting those columns
+would leave only the two constant projected rows `0^m` and `1^m`. A word of
+weight `r+1` is farther than `r` from both because
+`m-(r+1)>=r+1`. Therefore every type occurs at most `m-1` times, and
 
 ```text
-n <= (m-1)2^M,
-M >= log_2(n/(m-1)).
+n <= (m-1)2^(M-1),
+M >= 1 + log_2(n/(m-1)).
 ```
 
 For the upper bound, take `M` independent uniformly random binary rows.
@@ -263,13 +266,30 @@ In particular, for every fixed `m>=4`,
 A completely explicit sufficient condition for strict inequality is
 
 ```text
-n > (m-1) 2^(γ(Q_m)).
+n > (m-1) 2^(γ(Q_m)-1).
 ```
 
 Indeed Theorem 4.1 then gives
 `ι(Q_n,Q_(n-m)) > γ(Q_m)`.
 
-## 5. The small case `(n,k)=(6,2)`
+## 5. Quantitative separation along Hamming lengths
+
+The perfect-code obstruction proves an excess of at least one row at two
+extra columns. The separate note
+[`quantitative-hamming-gap.md`](quantitative-hamming-gap.md) strengthens this
+to
+
+```text
+CAN_1(m,m+2,2) - K_2(m,1)
+  >= ceil(3 K m(m-3) / [4(m+2)(m+1)^4]),
+```
+
+where `m=2^t-1`, `t>=3`, and `K=2^m/(m+1)`. Thus the additive gap is
+`Omega(2^m/m^4)`. The proof combines covering-excess double counting across
+all two-coordinate deletions with the Caro--Wei bound and radius-two sphere
+packing.
+
+## 6. The small case `(n,k)=(6,2)`
 
 The 2010 radius-covering-array tables already contain
 
@@ -285,10 +305,10 @@ By Theorem 2.1 this immediately yields
 
 The five-row witness in this repository and its Lean certificate remain
 useful as an independently checkable illustration, but the numerical value
-must not be presented as new. The new mathematical content sought here is
-the graph--coding equivalence and the structural consequences above.
+must not be presented as new. The candidate-new mathematical content is the
+graph--coding equivalence and the structural consequences above.
 
-## 6. Trust and novelty boundary
+## 7. Trust and novelty boundary
 
 The proofs in Sections 2--4 are self-contained. The following external
 inputs are standard and explicitly identified:
@@ -298,6 +318,14 @@ inputs are standard and explicitly identified:
 3. existence of q-ary Hamming perfect codes;
 4. the 2010 table entry `CAN_1(4,6,2)=5`.
 
-Public searches performed on 2026-09-02 did not locate the graph--coding
-equivalence, Theorem 3.1, or the resulting classification in Corollary 3.3.
-That supports further expert review; it is not a priority certificate.
+The Lean development verifies the coordinate-copy theorem, the exact
+face-distance identity, the face-hitting/radius-covering equivalence, the
+perfect-projection separation and puncturing metric steps, an abstract packing
+bound, and the algebraic core of the quantitative theorem. The Hamming-ball
+cardinality specializations and the full quantitative incidence sums are not
+yet assembled into one end-to-end formal theorem.
+
+Public searches through 2026-09-04 did not locate the graph--coding
+equivalence, Theorem 3.1, the Hamming-family classification, or the exact
+quantitative bound. This supports further expert review; it is not a priority
+certificate.
