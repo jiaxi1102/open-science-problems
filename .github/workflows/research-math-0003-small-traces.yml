@@ -1,0 +1,113 @@
+name: research math-0003 small trace quotients
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - tools/kg12_trace_sat.py
+      - .github/workflows/research-math-0003-small-traces.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve:
+    strategy:
+      fail-fast: false
+      matrix:
+        distinguished: [5, 6, 7]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate deterministic trace quotient
+        shell: bash
+        run: |
+          set -euo pipefail
+          M='${{ matrix.distinguished }}'
+          mkdir -p "small-trace-$M"
+          python tools/kg12_trace_sat.py --distinguished "$M" generate \
+            --cnf "small-trace-$M/instance.cnf" \
+            --metadata "small-trace-$M/instance-metadata.json"
+
+      - name: Install pinned Kissat and DRAT checker
+        shell: bash
+        run: |
+          set -euo pipefail
+          M='${{ matrix.distinguished }}'
+          curl --fail --location --retry 3 \
+            https://github.com/arminbiere/kissat/releases/download/rel-4.0.4/kissat-4.0.4-linux-amd64.zip \
+            --output kissat.zip
+          echo '63282e5168ca040a2018edfba0726bf893a7a6bcdb1db87feb67857e2da697a7  kissat.zip' \
+            | sha256sum --check --strict
+          unzip -q kissat.zip -d kissat-dist
+          KISSAT=''
+          while IFS= read -r candidate; do
+            if file "$candidate" | grep -q 'ELF'; then
+              KISSAT="$candidate"
+              break
+            fi
+          done < <(find kissat-dist -type f -print | sort)
+          test -n "$KISSAT"
+          chmod +x "$KISSAT"
+          "$KISSAT" --version | tee "small-trace-$M/kissat-version.txt"
+          echo "KISSAT=$GITHUB_WORKSPACE/$KISSAT" >> "$GITHUB_ENV"
+          curl --fail --location --retry 3 \
+            https://raw.githubusercontent.com/marijnheule/drat-trim/2e3b2dc0ecf938addbd779d42877b6ed69d9a985/drat-trim.c \
+            --output "small-trace-$M/drat-trim.c"
+          gcc -O3 -DNDEBUG "small-trace-$M/drat-trim.c" -o "small-trace-$M/drat-trim"
+
+      - name: Solve and certify quotient
+        shell: bash
+        run: |
+          set -euo pipefail
+          M='${{ matrix.distinguished }}'
+          set +e
+          "$KISSAT" --time=600 \
+            "small-trace-$M/instance.cnf" "small-trace-$M/proof.drat" \
+            > "small-trace-$M/kissat.out" 2> "small-trace-$M/kissat.err"
+          code=$?
+          set -e
+          printf '%s\n' "$code" > "small-trace-$M/kissat.exit-code.txt"
+          if [ "$code" -eq 10 ]; then
+            python tools/kg12_trace_sat.py --distinguished "$M" verify-model \
+              --solver-output "small-trace-$M/kissat.out" \
+              --certificate "small-trace-$M/sat-certificate.json"
+            printf 'SAT_FULL_KG12_MODEL_VERIFIED\n' > "small-trace-$M/status.txt"
+          elif [ "$code" -eq 20 ]; then
+            "small-trace-$M/drat-trim" \
+              "small-trace-$M/instance.cnf" "small-trace-$M/proof.drat" \
+              > "small-trace-$M/drat-trim.out" 2> "small-trace-$M/drat-trim.err"
+            grep -q 'VERIFIED' "small-trace-$M/drat-trim.out"
+            printf 'UNSAT_TRACE_QUOTIENT_DRAT_VERIFIED\n' > "small-trace-$M/status.txt"
+          else
+            printf 'INCONCLUSIVE_EXIT_%s\n' "$code" > "small-trace-$M/status.txt"
+            exit 1
+          fi
+          cat "small-trace-$M/status.txt"
+
+      - name: Record checksums
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          M='${{ matrix.distinguished }}'
+          find "small-trace-$M" -maxdepth 1 -type f ! -name SHA256SUMS.txt \
+            -print0 | sort -z | xargs -0 sha256sum > "small-trace-$M/SHA256SUMS.txt"
+          if [ -s "small-trace-$M/proof.drat" ]; then
+            gzip -9 "small-trace-$M/proof.drat"
+          fi
+
+      - name: Upload quotient result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: math-0003-small-trace-${{ matrix.distinguished }}
+          path: small-trace-${{ matrix.distinguished }}/
+          if-no-files-found: error
+          retention-days: 90

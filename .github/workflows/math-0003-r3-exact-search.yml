@@ -1,0 +1,135 @@
+name: math-0003 exact r3 Kneser search
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - tools/search_kneser_r3_exact.py
+      - problems/math-0003-kneser-ramsey-lower-bound/experiments/r3-exact/**
+      - .github/workflows/math-0003-r3-exact-search.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: math-0003-exact-r3
+  cancel-in-progress: true
+
+jobs:
+  solve:
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        configuration: [sat, default, unsat]
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate canonical CNF
+        run: |
+          mkdir -p "results/${{ matrix.configuration }}"
+          python tools/search_kneser_r3_exact.py generate \
+            "results/${{ matrix.configuration }}"
+
+      - name: Download and authenticate Kissat 4.0.4
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            --output kissat.zip \
+            https://github.com/arminbiere/kissat/releases/download/rel-4.0.4/kissat-4.0.4-linux-amd64.zip
+          echo "63282e5168ca040a2018edfba0726bf893a7a6bcdb1db87feb67857e2da697a7  kissat.zip" \
+            | sha256sum --check --strict
+          mkdir kissat-bin
+          unzip -q kissat.zip -d kissat-bin
+          find kissat-bin -maxdepth 3 -type f -printf '%s %p\n' \
+            | sort -nr | tee kissat-archive-files.txt
+          KISSAT="$(find kissat-bin -maxdepth 3 -type f -iname 'kissat*' | head -n 1)"
+          if [[ -z "$KISSAT" ]]; then
+            KISSAT="$(find kissat-bin -maxdepth 3 -type f -printf '%s %p\n' \
+              | sort -nr | head -n 1 | cut -d' ' -f2-)"
+          fi
+          test -n "$KISSAT"
+          chmod +x "$KISSAT"
+          file "$KISSAT"
+          echo "KISSAT=$KISSAT" >> "$GITHUB_ENV"
+          "$KISSAT" --version | tee kissat-version.txt
+
+      - name: Solve exact coloring instance
+        id: solve
+        shell: bash
+        run: |
+          set -uo pipefail
+          result_dir="results/${{ matrix.configuration }}"
+          cnf="$result_dir/kg12_3_no_mono_triangle.cnf"
+          options=()
+          if [[ "${{ matrix.configuration }}" != "default" ]]; then
+            options+=("--${{ matrix.configuration }}")
+          fi
+
+          set +e
+          timeout --signal=TERM --kill-after=30s 1800s \
+            "$KISSAT" "${options[@]}" "$cnf" \
+            > "$result_dir/solver.out" \
+            2> "$result_dir/solver.err"
+          code=$?
+          set -e
+          echo "$code" > "$result_dir/solver-exit-code.txt"
+
+          if [[ "$code" -eq 10 ]]; then
+            echo "SAT model found; running independent full verification"
+            python tools/search_kneser_r3_exact.py verify \
+              "$result_dir/solver.out" "$result_dir"
+            echo "outcome=SAT" >> "$GITHUB_OUTPUT"
+          elif [[ "$code" -eq 20 ]]; then
+            echo "UNSAT reported; recording status without treating it as a proof"
+            python tools/search_kneser_r3_exact.py verify \
+              "$result_dir/solver.out" "$result_dir"
+            echo "outcome=UNSAT_UNVERIFIED" >> "$GITHUB_OUTPUT"
+          elif [[ "$code" -eq 124 || "$code" -eq 137 || "$code" -eq 143 ]]; then
+            echo '{"solver_status":"TIMEOUT","mathematical_claim":"none"}' \
+              > "$result_dir/solver-status.json"
+            echo "outcome=TIMEOUT" >> "$GITHUB_OUTPUT"
+          else
+            echo "Unexpected Kissat exit code: $code"
+            cat "$result_dir/solver.err"
+            exit "$code"
+          fi
+
+      - name: Summarize outcome
+        if: always()
+        shell: bash
+        run: |
+          echo "## ${{ matrix.configuration }} configuration" >> "$GITHUB_STEP_SUMMARY"
+          echo "Outcome: ${{ steps.solve.outputs.outcome || 'job-failed-before-outcome' }}" \
+            >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f "results/${{ matrix.configuration }}/sat-certificate.json" ]]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          path = Path("results/${{ matrix.configuration }}/sat-certificate.json")
+          value = json.loads(path.read_text())
+          value.pop("red_edge_ids_zero_based", None)
+          print(json.dumps(value, indent=2, sort_keys=True))
+          PY
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload exact-search evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kneser-r3-${{ matrix.configuration }}
+          path: |
+            results/${{ matrix.configuration }}/
+            kissat-version.txt
+            kissat-archive-files.txt
+          if-no-files-found: error
+          retention-days: 30

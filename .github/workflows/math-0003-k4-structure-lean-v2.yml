@@ -1,0 +1,50 @@
+name: math-0003 K4 structure Lean verification v2
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - problems/math-0003-kneser-ramsey-lower-bound/formal/k4-structure/**
+      - .github/workflows/math-0003-k4-structure-lean-v2.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reject unfinished proof markers
+        shell: bash
+        working-directory: problems/math-0003-kneser-ramsey-lower-bound/formal/k4-structure
+        run: |
+          if grep -nE '\b(sorry|admit|axiom)\b' K4Classification.lean; then
+            echo 'Unfinished proof or added axiom marker found'
+            exit 1
+          fi
+
+      - name: Create pinned dependency manifest
+        shell: bash
+        working-directory: problems/math-0003-kneser-ramsey-lower-bound/formal/k4-structure
+        run: |
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y
+          export PATH="$HOME/.elan/bin:$PATH"
+          lake update
+
+      - name: Build, audit axioms, and check compiled environment
+        uses: leanprover/lean-action@v1
+        env:
+          LEAN_NUM_THREADS: '1'
+        with:
+          lake-package-directory: problems/math-0003-kneser-ramsey-lower-bound/formal/k4-structure
+          build: true
+          test: false
+          lint: false
+          leanchecker: true
+          leanchecker-args: 'K4Classification'
+          axiom-audit: true
+          axiom-audit-root: K4Classification
+          axiom-audit-allow: 'propext,Classical.choice,Quot.sound'

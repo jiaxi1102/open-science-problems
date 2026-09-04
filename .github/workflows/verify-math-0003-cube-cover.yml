@@ -1,0 +1,220 @@
+name: verify math-0003 exhaustive cube cover
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - .github/workflows/verify-math-0003-cube-cover.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  verify-cover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/math-0003-exact-r3
+          fetch-depth: 0
+
+      - name: Locate and wait for latest cube workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo='jiaxi1102/open-science-problems'
+          branch='research/math-0003-exact-r3'
+          for attempt in $(seq 1 60); do
+            gh api "/repos/$repo/actions/runs?branch=$branch&per_page=100" > /tmp/runs.json
+            run_id="$(python - <<'PY'
+          import json
+          runs=json.load(open('/tmp/runs.json')).get('workflow_runs',[])
+          xs=[r for r in runs if r['name']=='research math-0003 exhaustive cube split']
+          xs.sort(key=lambda r:r['created_at'],reverse=True)
+          print(xs[0]['id'] if xs else '')
+          PY
+          )"
+            test -n "$run_id" || { sleep 20; continue; }
+            gh api "/repos/$repo/actions/runs/$run_id" > /tmp/cube-run.json
+            status="$(python -c 'import json; print(json.load(open("/tmp/cube-run.json"))["status"])')"
+            echo "attempt=$attempt run_id=$run_id status=$status"
+            if [ "$status" = completed ]; then
+              echo "CUBE_RUN_ID=$run_id" >> "$GITHUB_ENV"
+              break
+            fi
+            sleep 30
+          done
+          test "${status:-}" = completed || {
+            echo 'CUBE_RUN_ID=' >> "$GITHUB_ENV"
+          }
+
+      - name: Verify jobs and retained cube artifacts
+        if: env.CUBE_RUN_ID != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo='jiaxi1102/open-science-problems'
+          run_id="$CUBE_RUN_ID"
+          root='problems/math-0003-kneser-ramsey-lower-bound/experiments/kg12-r3'
+          work='/tmp/cube-cover'
+          mkdir -p "$work" "$root/cube-cover"
+
+          gh api --paginate "/repos/$repo/actions/runs/$run_id/jobs?per_page=100" > "$work/job-pages.jsonl"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          jobs=[]
+          for line in Path('/tmp/cube-cover/job-pages.jsonl').read_text().splitlines():
+              jobs.extend(json.loads(line).get('jobs',[]))
+          cube_jobs=[j for j in jobs if j['name'].startswith('solve-cube')]
+          if len(cube_jobs)!=36:
+              raise SystemExit(f'expected 36 cube jobs, found {len(cube_jobs)}')
+          bad=[(j['name'],j['status'],j.get('conclusion')) for j in cube_jobs if j['status']!='completed' or j.get('conclusion')!='success']
+          Path('/tmp/cube-cover/jobs.json').write_text(json.dumps(cube_jobs,indent=2,sort_keys=True)+'\n')
+          Path('/tmp/cube-cover/job-summary.json').write_text(json.dumps({'job_count':len(cube_jobs),'non_successful':bad},indent=2,sort_keys=True)+'\n')
+          PY
+
+          gh api "/repos/$repo/actions/runs/$run_id/artifacts?per_page=100" > "$work/artifacts.json"
+          python - <<'PY' > "$work/artifacts.tsv"
+          import json
+          artifacts=json.load(open('/tmp/cube-cover/artifacts.json')).get('artifacts',[])
+          selected=[a for a in artifacts if a['name'].startswith('math-0003-cube-') and not a.get('expired')]
+          for a in sorted(selected,key=lambda x:x['name']):
+              print('\t'.join([str(a['id']),a['name'],str(a['size_in_bytes']),a.get('digest') or '']))
+          PY
+
+          count="$(wc -l < "$work/artifacts.tsv")"
+          test "$count" -eq 36 || { echo "expected 36 artifacts, found $count"; exit 1; }
+          : > "$work/certificates.tsv"
+          while IFS=$'\t' read -r artifact_id name size digest; do
+            zip="$work/$artifact_id.zip"
+            curl --fail --silent --show-error --location \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$repo/actions/artifacts/$artifact_id/zip" \
+              --output "$zip"
+            status_member="$(unzip -Z1 "$zip" | grep -E '(^|/)status\.txt$' | head -n1)"
+            status="$(unzip -p "$zip" "$status_member" | tr -d '\r\n')"
+            checker='false'
+            checker_member="$(unzip -Z1 "$zip" | grep -E '(^|/)drat-trim\.out$' | head -n1 || true)"
+            if [ -n "$checker_member" ]; then
+              unzip -p "$zip" "$checker_member" > "$work/checker.out"
+              if grep -q 'VERIFIED' "$work/checker.out" && ! grep -q 'NOT VERIFIED' "$work/checker.out"; then
+                checker='true'
+              fi
+            fi
+            cert_member="$(unzip -Z1 "$zip" | grep -E '(^|/)sat-certificate\.json$' | head -n1 || true)"
+            sat_checked='false'
+            if [ -n "$cert_member" ]; then
+              unzip -p "$zip" "$cert_member" > "$work/sat.json"
+              sat_checked="$(python - <<'PY'
+          import json
+          x=json.load(open('/tmp/cube-cover/sat.json'))
+          edges=x.get('full_edges_checked',x.get('edges_checked'))
+          triangles=x.get('full_triangles_checked',x.get('triangles_checked'))
+          mono=x.get('monochromatic_triangles',x.get('monochromatic_full_triangles'))
+          print(str(edges==9240 and triangles==61600 and mono==0).lower())
+          PY
+          )"
+            fi
+            printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+              "$name" "$artifact_id" "$size" "$digest" \
+              "$(sha256sum "$zip" | cut -d' ' -f1)" "$status" "$checker/$sat_checked" \
+              >> "$work/certificates.tsv"
+          done < "$work/artifacts.tsv"
+
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          rows=[]
+          for line in Path('/tmp/cube-cover/certificates.tsv').read_text().splitlines():
+              name,artifact_id,size,digest,zip_sha,status,checks=line.split('\t')
+              checker,sat_checked=checks.split('/')
+              m=re.fullmatch(r'math-0003-cube-(matching|path)-(\d+)',name)
+              if not m: raise SystemExit(f'bad artifact name {name}')
+              rows.append({
+                  'branch':m.group(1),'cube':int(m.group(2)),'artifact_name':name,
+                  'artifact_id':int(artifact_id),'size_bytes':int(size),
+                  'github_digest':digest or None,'zip_sha256':zip_sha,'status':status,
+                  'drat_trim_verified':checker=='true','sat_model_fully_checked':sat_checked=='true',
+              })
+          keys={(r['branch'],r['cube']) for r in rows}
+          expected={(b,c) for b in ('matching','path') for c in range(18)}
+          if keys!=expected:
+              raise SystemExit(f'cube coverage mismatch: missing={sorted(expected-keys)} extra={sorted(keys-expected)}')
+          sats=[r for r in rows if r['status']=='SAT_FULL_KG12_MODEL_VERIFIED' and r['sat_model_fully_checked']]
+          unsats=[r for r in rows if r['status']=='UNSAT_EXACT_CUBE_DRAT_VERIFIED' and r['drat_trim_verified']]
+          if sats:
+              conclusion='EXACT_13_CANDIDATE_FROM_FULLY_CHECKED_CUBE_MODEL'
+          elif len(unsats)==36:
+              conclusion='EXACT_12_CANDIDATE_FROM_36_DRAT_VERIFIED_EXHAUSTIVE_CUBES'
+          else:
+              conclusion='NO_EXACT_CONCLUSION'
+          payload={
+              'cube_workflow_run_id':int(__import__('os').environ['CUBE_RUN_ID']),
+              'coverage_verified':keys==expected,
+              'total_cubes':len(rows),
+              'fully_checked_sat_cubes':len(sats),
+              'drat_verified_unsat_cubes':len(unsats),
+              'conclusion':conclusion,
+              'cubes':sorted(rows,key=lambda r:(r['branch'],r['cube'])),
+          }
+          root=Path('problems/math-0003-kneser-ramsey-lower-bound/experiments/kg12-r3')
+          (root/'CUBE_COVERAGE.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
+          lines=['# Exhaustive cube coverage','',f"**Conclusion:** `{conclusion}`",'',f"- Cubes covered: {len(rows)}/36",f"- Fully checked SAT cubes: {len(sats)}",f"- DRAT-verified UNSAT cubes: {len(unsats)}",'', '| Branch | Cube | Status | DRAT | SAT model | Artifact |','|---|---:|---|---|---|---:|']
+          for r in payload['cubes']:
+              lines.append(f"| {r['branch']} | {r['cube']} | `{r['status']}` | {r['drat_trim_verified']} | {r['sat_model_fully_checked']} | `{r['artifact_id']}` |")
+          (root/'CUBE_COVERAGE.md').write_text('\n'.join(lines)+'\n')
+          if conclusion!='NO_EXACT_CONCLUSION':
+              (root/'EXACT_R3_CANDIDATE.md').write_text(
+                  '# Exact `r=3` candidate result\n\n'
+                  f'Certificate conclusion: `{conclusion}`.\n\n'
+                  'This is a computationally certified candidate. It must still pass independent statement, novelty, and certificate-reproduction audits before publication language is used.\n'
+              )
+          print(json.dumps(payload,indent=2,sort_keys=True))
+          PY
+
+      - name: Commit coverage result
+        if: env.CUBE_RUN_ID != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add problems/math-0003-kneser-ramsey-lower-bound/experiments/kg12-r3/CUBE_COVERAGE.json \
+                  problems/math-0003-kneser-ramsey-lower-bound/experiments/kg12-r3/CUBE_COVERAGE.md \
+                  problems/math-0003-kneser-ramsey-lower-bound/experiments/kg12-r3/EXACT_R3_CANDIDATE.md || true
+          if git diff --cached --quiet; then
+            echo 'No cube coverage result to commit'
+          else
+            git commit -m 'Record exhaustive exact-r3 cube coverage'
+            git push origin HEAD:research/math-0003-exact-r3
+          fi
+
+      - name: Comment research PR
+        if: env.CUBE_RUN_ID != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='problems/math-0003-kneser-ramsey-lower-bound/experiments/kg12-r3'
+          conclusion="$(python -c 'import json; print(json.load(open("'"$root"'/CUBE_COVERAGE.json"))["conclusion"])')"
+          cat > /tmp/comment.md <<EOF
+          <!-- math-0003-cube-cover -->
+          ## Exhaustive 36-cube certificate check
+
+          Result: \`$conclusion\`.
+
+          Coverage and per-cube checker status are recorded in \`CUBE_COVERAGE.md\` and \`CUBE_COVERAGE.json\`. Restricted ansatzes are not used in this conclusion.
+          EOF
+          gh pr comment 11 --repo jiaxi1102/open-science-problems --body-file /tmp/comment.md

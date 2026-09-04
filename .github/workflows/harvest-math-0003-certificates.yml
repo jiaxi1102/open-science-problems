@@ -1,0 +1,242 @@
+name: harvest math-0003 certificates
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - .github/workflows/harvest-math-0003-certificates.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  harvest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/math-0003-exact-r3
+          fetch-depth: 0
+
+      - name: Allow active certificate jobs to settle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo='jiaxi1102/open-science-problems'
+          branch='research/math-0003-exact-r3'
+          for attempt in $(seq 1 36); do
+            active="$(gh api --paginate "/repos/$repo/actions/runs?branch=$branch&per_page=100" --jq '[.workflow_runs[] | select(.name | contains("math-0003")) | select(.status != "completed")] | length' | awk '{s+=$1} END{print s+0}')"
+            echo "attempt=$attempt active_math0003_runs=$active"
+            if [ "$active" -eq 0 ]; then
+              break
+            fi
+            sleep 30
+          done
+
+      - name: Download small and medium certificate artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo='jiaxi1102/open-science-problems'
+          branch='research/math-0003-exact-r3'
+          root='problems/math-0003-kneser-ramsey-lower-bound/experiments/kg12-r3'
+          work='/tmp/math0003-harvest'
+          mkdir -p "$work/zips" "$work/unpacked" "$root/certificates"
+
+          gh api --paginate "/repos/$repo/actions/runs?branch=$branch&per_page=100" > "$work/run-pages.jsonl"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          runs=[]
+          for line in Path('/tmp/math0003-harvest/run-pages.jsonl').read_text().splitlines():
+              runs.extend(json.loads(line).get('workflow_runs', []))
+          latest={}
+          for r in runs:
+              if 'math-0003' not in r['name'] or r['name'].startswith(('snapshot ','harvest ','report ','inspect ')):
+                  continue
+              if r['name'] not in latest or r['created_at'] > latest[r['name']]['created_at']:
+                  latest[r['name']]=r
+          Path('/tmp/math0003-harvest/latest-runs.json').write_text(json.dumps(list(latest.values()),indent=2,sort_keys=True)+'\n')
+          PY
+
+          python - <<'PY' > "$work/run-ids.txt"
+          import json
+          for r in json.load(open('/tmp/math0003-harvest/latest-runs.json')):
+              print(r['id'])
+          PY
+
+          : > "$work/artifacts.tsv"
+          while IFS= read -r run_id; do
+            gh api "/repos/$repo/actions/runs/$run_id/artifacts?per_page=100" > "$work/artifacts-$run_id.json"
+            python - "$run_id" <<'PY' >> /tmp/math0003-harvest/artifacts.tsv
+          import json,sys
+          run_id=sys.argv[1]
+          for a in json.load(open(f'/tmp/math0003-harvest/artifacts-{run_id}.json')).get('artifacts',[]):
+              if not a.get('expired') and a['name'].startswith('math-0003'):
+                  print('\t'.join([run_id,str(a['id']),a['name'],str(a['size_in_bytes']),a.get('digest') or '']))
+          PY
+          done < "$work/run-ids.txt"
+
+          while IFS=$'\t' read -r run_id artifact_id name size digest; do
+            [ -n "$artifact_id" ] || continue
+            # Inspect artifacts up to 300 MB. Larger proof objects remain indexed by metadata.
+            if [ "$size" -le 300000000 ]; then
+              zip="$work/zips/$artifact_id.zip"
+              curl --fail --silent --show-error --location \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                -H 'X-GitHub-Api-Version: 2022-11-28' \
+                "https://api.github.com/repos/$repo/actions/artifacts/$artifact_id/zip" \
+                --output "$zip"
+              dest="$work/unpacked/$artifact_id"
+              mkdir -p "$dest"
+              unzip -q "$zip" -d "$dest"
+              printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+                "$run_id" "$artifact_id" "$name" "$size" "$digest" \
+                "$(sha256sum "$zip" | cut -d' ' -f1)" >> "$work/downloaded.tsv"
+            fi
+          done < "$work/artifacts.tsv"
+
+          python - <<'PY'
+          import hashlib,json,re,shutil
+          from pathlib import Path
+
+          work=Path('/tmp/math0003-harvest')
+          root=Path('problems/math-0003-kneser-ramsey-lower-bound/experiments/kg12-r3')
+          runs={str(r['id']):r for r in json.load(open(work/'latest-runs.json'))}
+          artifact_rows=[]
+          if (work/'artifacts.tsv').exists():
+              for line in (work/'artifacts.tsv').read_text().splitlines():
+                  run_id,artifact_id,name,size,digest=line.split('\t')
+                  artifact_rows.append({
+                      'run_id':run_id,'artifact_id':artifact_id,'name':name,
+                      'size_bytes':int(size),'github_digest':digest or None,
+                  })
+          downloaded={}
+          if (work/'downloaded.tsv').exists():
+              for line in (work/'downloaded.tsv').read_text().splitlines():
+                  run_id,artifact_id,name,size,digest,zip_sha=line.split('\t')
+                  downloaded[artifact_id]=zip_sha
+
+          decisive_sat=[]
+          decisive_unsat=[]
+          restricted=[]
+          inconclusive=[]
+          entries=[]
+          for row in artifact_rows:
+              aid=row['artifact_id']
+              entry=dict(row)
+              entry['workflow']=runs.get(row['run_id'],{}).get('name')
+              entry['workflow_status']=runs.get(row['run_id'],{}).get('status')
+              entry['workflow_conclusion']=runs.get(row['run_id'],{}).get('conclusion')
+              entry['inspected']=aid in downloaded
+              entry['zip_sha256']=downloaded.get(aid)
+              status=None
+              cert=None
+              checker_verified=False
+              if entry['inspected']:
+                  dest=work/'unpacked'/aid
+                  status_files=list(dest.rglob('status.txt'))
+                  if status_files:
+                      status=status_files[0].read_text(errors='replace').strip()
+                  cert_files=list(dest.rglob('sat-certificate.json'))
+                  if not cert_files:
+                      cert_files=[p for p in dest.rglob('result.json') if p.is_file()]
+                  if cert_files:
+                      try: cert=json.loads(cert_files[0].read_text())
+                      except Exception: cert=None
+                  checker_files=list(dest.rglob('drat-trim.out'))
+                  checker_verified=any('VERIFIED' in p.read_text(errors='replace') and 'NOT VERIFIED' not in p.read_text(errors='replace') for p in checker_files)
+              entry['status']=status
+              entry['certificate_summary']={k:cert[k] for k in (
+                  'result','mode','case','branch','bound','full_edges_checked','edges_checked',
+                  'full_triangles_checked','triangles_checked','monochromatic_triangles',
+                  'monochromatic_full_triangles','edge_model_hex_sha256','model_hex_sha256',
+                  'full_model_hex_sha256') if cert and k in cert}
+              entry['drat_trim_verified']=checker_verified
+
+              sat_ok=(status=='SAT_FULL_KG12_MODEL_VERIFIED' or (cert and cert.get('result') in ('SAT','SAT_FULL_KG12_MODEL_VERIFIED'))) and cert is not None
+              checked_edges=cert.get('full_edges_checked',cert.get('edges_checked')) if cert else None
+              checked_triangles=cert.get('full_triangles_checked',cert.get('triangles_checked')) if cert else None
+              monochromatic=cert.get('monochromatic_triangles',cert.get('monochromatic_full_triangles')) if cert else None
+              if sat_ok and checked_edges==9240 and checked_triangles==61600 and monochromatic==0:
+                  entry['classification']='DECISIVE_SAT_EXACT_13_CANDIDATE'
+                  decisive_sat.append(entry)
+                  cert_dir=root/'certificates'/row['name']
+                  cert_dir.mkdir(parents=True,exist_ok=True)
+                  for p in (work/'unpacked'/aid).rglob('*'):
+                      if p.is_file() and p.name in {'status.txt','sat-certificate.json','instance-metadata.json','SHA256SUMS.txt','kissat-version.txt'}:
+                          shutil.copy2(p,cert_dir/p.name)
+              elif row['name']=='math-0003-exact-r3' and status=='UNSAT_DRAT_VERIFIED' and checker_verified:
+                  entry['classification']='DECISIVE_UNRESTRICTED_UNSAT_EXACT_12_CANDIDATE'
+                  decisive_unsat.append(entry)
+              elif row['name'] in {'math-0003-k4-matching','math-0003-k4-path'} and status=='UNSAT_BRANCH_DRAT_VERIFIED' and checker_verified:
+                  entry['classification']='EXHAUSTIVE_BRANCH_UNSAT_COMPONENT'
+                  decisive_unsat.append(entry)
+              elif status and status.startswith('UNSAT'):
+                  entry['classification']='RESTRICTED_UNSAT_NONDECISIVE'
+                  restricted.append(entry)
+              else:
+                  entry['classification']='INCONCLUSIVE_OR_UNINSPECTED'
+                  inconclusive.append(entry)
+              entries.append(entry)
+
+          exact_conclusion=None
+          if decisive_sat:
+              exact_conclusion='EXACT_13_CANDIDATE_REQUIRES_INDEPENDENT_NOVELTY_AND_MODEL_AUDIT'
+          elif any(e['classification']=='DECISIVE_UNRESTRICTED_UNSAT_EXACT_12_CANDIDATE' for e in decisive_unsat):
+              exact_conclusion='EXACT_12_CANDIDATE_REQUIRES_INDEPENDENT_NOVELTY_AND_PROOF_AUDIT'
+          else:
+              branches={e['name'] for e in decisive_unsat if e['classification']=='EXHAUSTIVE_BRANCH_UNSAT_COMPONENT'}
+              if {'math-0003-k4-matching','math-0003-k4-path'} <= branches:
+                  exact_conclusion='EXACT_12_CANDIDATE_FROM_TWO_CHECKED_EXHAUSTIVE_BRANCHES'
+
+          payload={
+              'generated_from_branch':'research/math-0003-exact-r3',
+              'exact_conclusion':exact_conclusion,
+              'decisive_sat_count':len(decisive_sat),
+              'decisive_unsat_components':len(decisive_unsat),
+              'restricted_unsat_count':len(restricted),
+              'inconclusive_or_uninspected_count':len(inconclusive),
+              'artifacts':entries,
+          }
+          (root/'CERTIFICATE_INDEX.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
+
+          lines=['# Certificate harvest','',f"**Exact conclusion:** `{exact_conclusion or 'NONE'}`",'']
+          lines += [
+              f"- Decisive SAT candidates: {len(decisive_sat)}",
+              f"- Decisive/checkable UNSAT components: {len(decisive_unsat)}",
+              f"- Restricted UNSAT results: {len(restricted)}",
+              f"- Inconclusive or uninspected artifacts: {len(inconclusive)}",'',
+              '## Artifact classifications','',
+              '| Artifact | Workflow | Status | Classification | Inspected |',
+              '|---|---|---|---|---|',
+          ]
+          for e in entries:
+              lines.append(f"| `{e['name']}` | {e.get('workflow') or '—'} | `{e.get('status') or '—'}` | `{e['classification']}` | {e['inspected']} |")
+          lines += ['', 'The harvest script never promotes a restricted-ansatz UNSAT result to an unrestricted Ramsey theorem.']
+          (root/'CERTIFICATE_HARVEST.md').write_text('\n'.join(lines)+'\n')
+          print(json.dumps(payload,indent=2,sort_keys=True))
+          PY
+
+      - name: Commit certificate index and compact promoted files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add problems/math-0003-kneser-ramsey-lower-bound/experiments/kg12-r3/CERTIFICATE_INDEX.json \
+                  problems/math-0003-kneser-ramsey-lower-bound/experiments/kg12-r3/CERTIFICATE_HARVEST.md \
+                  problems/math-0003-kneser-ramsey-lower-bound/experiments/kg12-r3/certificates || true
+          if git diff --cached --quiet; then
+            echo 'No certificate-index changes'
+          else
+            git commit -m 'Harvest exact-r3 certificate status'
+            git push origin HEAD:research/math-0003-exact-r3
+          fi

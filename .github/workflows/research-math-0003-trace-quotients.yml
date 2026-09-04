@@ -1,0 +1,114 @@
+name: research math-0003 trace quotients
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - tools/kg12_trace_sat.py
+      - .github/workflows/research-math-0003-trace-quotients.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve:
+    strategy:
+      fail-fast: false
+      matrix:
+        distinguished: [9, 10]
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate deterministic trace quotient
+        shell: bash
+        run: |
+          set -euo pipefail
+          M='${{ matrix.distinguished }}'
+          mkdir -p "result-$M"
+          python tools/kg12_trace_sat.py --distinguished "$M" generate \
+            --cnf "result-$M/trace-$M.cnf" \
+            --metadata "result-$M/instance-metadata.json"
+
+      - name: Install pinned Kissat and drat-trim
+        shell: bash
+        run: |
+          set -euo pipefail
+          M='${{ matrix.distinguished }}'
+          curl --fail --location --retry 3 \
+            https://github.com/arminbiere/kissat/releases/download/rel-4.0.4/kissat-4.0.4-linux-amd64.zip \
+            --output kissat.zip
+          echo '63282e5168ca040a2018edfba0726bf893a7a6bcdb1db87feb67857e2da697a7  kissat.zip' \
+            | sha256sum --check --strict
+          unzip -q kissat.zip -d kissat-dist
+          KISSAT=''
+          while IFS= read -r candidate; do
+            if file "$candidate" | grep -q 'ELF'; then
+              KISSAT="$candidate"
+              break
+            fi
+          done < <(find kissat-dist -type f -print | sort)
+          test -n "$KISSAT"
+          chmod +x "$KISSAT"
+          "$KISSAT" --version | tee "result-$M/kissat-version.txt"
+          echo "KISSAT=$GITHUB_WORKSPACE/$KISSAT" >> "$GITHUB_ENV"
+
+          curl --fail --location --retry 3 \
+            https://raw.githubusercontent.com/marijnheule/drat-trim/2e3b2dc0ecf938addbd779d42877b6ed69d9a985/drat-trim.c \
+            --output "result-$M/drat-trim.c"
+          gcc -O3 -DNDEBUG "result-$M/drat-trim.c" -o "result-$M/drat-trim"
+
+      - name: Solve and certify
+        shell: bash
+        run: |
+          set -euo pipefail
+          M='${{ matrix.distinguished }}'
+          set +e
+          "$KISSAT" --time=1500 \
+            "result-$M/trace-$M.cnf" "result-$M/trace-$M.drat" \
+            > "result-$M/kissat.out" 2> "result-$M/kissat.err"
+          code=$?
+          set -e
+          printf '%s\n' "$code" > "result-$M/kissat.exit-code.txt"
+
+          if [ "$code" -eq 10 ]; then
+            python tools/kg12_trace_sat.py --distinguished "$M" verify-model \
+              --solver-output "result-$M/kissat.out" \
+              --certificate "result-$M/sat-certificate.json"
+            printf 'SAT_FULL_KG12_MODEL_VERIFIED\n' > "result-$M/status.txt"
+          elif [ "$code" -eq 20 ]; then
+            "result-$M/drat-trim" \
+              "result-$M/trace-$M.cnf" "result-$M/trace-$M.drat" \
+              > "result-$M/drat-trim.out" 2> "result-$M/drat-trim.err"
+            grep -q 'VERIFIED' "result-$M/drat-trim.out"
+            printf 'UNSAT_TRACE_QUOTIENT_DRAT_VERIFIED\n' > "result-$M/status.txt"
+          else
+            printf 'INCONCLUSIVE_EXIT_%s\n' "$code" > "result-$M/status.txt"
+            exit 1
+          fi
+
+      - name: Record checksums
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          M='${{ matrix.distinguished }}'
+          find "result-$M" -maxdepth 1 -type f ! -name SHA256SUMS.txt \
+            -print0 | sort -z | xargs -0 sha256sum > "result-$M/SHA256SUMS.txt"
+          if [ -s "result-$M/trace-$M.drat" ]; then
+            gzip -9 "result-$M/trace-$M.drat"
+          fi
+
+      - name: Upload quotient certificate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: math-0003-trace-${{ matrix.distinguished }}
+          path: result-${{ matrix.distinguished }}/
+          if-no-files-found: error
+          retention-days: 90

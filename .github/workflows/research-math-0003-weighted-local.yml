@@ -1,0 +1,76 @@
+name: research math-0003 weighted local
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - tools/kg12_weighted_local_cp.py
+      - .github/workflows/research-math-0003-weighted-local.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve:
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        branch: [matching, path]
+        bound: [1, 2, 3]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install pinned OR-Tools
+        run: pip install 'ortools==9.14.6206'
+      - name: Solve bounded local-weight ansatz
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH='${{ matrix.branch }}'
+          BOUND='${{ matrix.bound }}'
+          mkdir -p "weighted-$BRANCH-$BOUND"
+          set +e
+          python tools/kg12_weighted_local_cp.py \
+            --branch "$BRANCH" \
+            --bound "$BOUND" \
+            --time-limit 1200 \
+            --workers 4 \
+            --seed "$BOUND" \
+            --output "weighted-$BRANCH-$BOUND/result.json" \
+            > "weighted-$BRANCH-$BOUND/solver.log" 2>&1
+          code=$?
+          set -e
+          printf '%s\n' "$code" > "weighted-$BRANCH-$BOUND/exit-code.txt"
+          cat "weighted-$BRANCH-$BOUND/result.json"
+          if grep -q 'SAT_FULL_KG12_MODEL_VERIFIED' "weighted-$BRANCH-$BOUND/result.json"; then
+            printf 'SAT_FULL_KG12_MODEL_VERIFIED\n' > "weighted-$BRANCH-$BOUND/status.txt"
+          elif grep -q 'UNSAT_BOUNDED_WEIGHT_ANSATZ_ONLY' "weighted-$BRANCH-$BOUND/result.json"; then
+            printf 'UNSAT_BOUNDED_WEIGHT_ANSATZ_ONLY\n' > "weighted-$BRANCH-$BOUND/status.txt"
+          else
+            printf 'INCONCLUSIVE\n' > "weighted-$BRANCH-$BOUND/status.txt"
+            exit 1
+          fi
+      - name: Record checksums
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH='${{ matrix.branch }}'
+          BOUND='${{ matrix.bound }}'
+          find "weighted-$BRANCH-$BOUND" -maxdepth 1 -type f ! -name SHA256SUMS.txt \
+            -print0 | sort -z | xargs -0 sha256sum > "weighted-$BRANCH-$BOUND/SHA256SUMS.txt"
+      - name: Upload weighted-local result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: math-0003-weighted-${{ matrix.branch }}-${{ matrix.bound }}
+          path: weighted-${{ matrix.branch }}-${{ matrix.bound }}/
+          if-no-files-found: error
+          retention-days: 90

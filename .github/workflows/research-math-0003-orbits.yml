@@ -1,0 +1,119 @@
+name: research math-0003 orbit ansatzes
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - tools/kg12_orbit_sat.py
+      - .github/workflows/research-math-0003-orbits.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solve-orbit:
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        case:
+          - c6
+          - c4
+          - c3
+          - c2
+          - c6-signed
+          - c4-signed
+          - c2-signed
+          - d6
+          - d4
+          - d3
+          - d2
+          - d6-signed-r0
+          - d6-signed-r1
+          - d4-signed-r0
+          - d4-signed-r1
+          - d2-signed-r0
+          - d2-signed-r1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate deterministic orbit CNF
+        shell: bash
+        run: |
+          set -euo pipefail
+          CASE='${{ matrix.case }}'
+          mkdir -p "orbit-$CASE"
+          python tools/kg12_orbit_sat.py --case "$CASE" generate \
+            --cnf "orbit-$CASE/instance.cnf" \
+            --metadata "orbit-$CASE/instance-metadata.json"
+
+      - name: Install pinned Kissat binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          CASE='${{ matrix.case }}'
+          curl --fail --location --retry 3 \
+            https://github.com/arminbiere/kissat/releases/download/rel-4.0.4/kissat-4.0.4-linux-amd64.zip \
+            --output kissat.zip
+          echo '63282e5168ca040a2018edfba0726bf893a7a6bcdb1db87feb67857e2da697a7  kissat.zip' \
+            | sha256sum --check --strict
+          unzip -q kissat.zip -d kissat-dist
+          KISSAT=''
+          while IFS= read -r candidate; do
+            if file "$candidate" | grep -q 'ELF'; then
+              KISSAT="$candidate"
+              break
+            fi
+          done < <(find kissat-dist -type f -print | sort)
+          test -n "$KISSAT"
+          chmod +x "$KISSAT"
+          "$KISSAT" --version | tee "orbit-$CASE/kissat-version.txt"
+          echo "KISSAT=$GITHUB_WORKSPACE/$KISSAT" >> "$GITHUB_ENV"
+
+      - name: Solve ansatz and verify every SAT model
+        shell: bash
+        run: |
+          set -euo pipefail
+          CASE='${{ matrix.case }}'
+          set +e
+          "$KISSAT" --time=480 "orbit-$CASE/instance.cnf" \
+            > "orbit-$CASE/kissat.out" 2> "orbit-$CASE/kissat.err"
+          code=$?
+          set -e
+          printf '%s\n' "$code" > "orbit-$CASE/kissat.exit-code.txt"
+          if [ "$code" -eq 10 ]; then
+            python tools/kg12_orbit_sat.py --case "$CASE" verify-model \
+              --solver-output "orbit-$CASE/kissat.out" \
+              --certificate "orbit-$CASE/sat-certificate.json"
+            printf 'SAT_FULL_KG12_MODEL_VERIFIED\n' > "orbit-$CASE/status.txt"
+          elif [ "$code" -eq 20 ]; then
+            printf 'UNSAT_SOLVER_ONLY_NONDECISIVE_ANSATZ\n' > "orbit-$CASE/status.txt"
+          else
+            printf 'INCONCLUSIVE_EXIT_%s\n' "$code" > "orbit-$CASE/status.txt"
+            exit 1
+          fi
+          cat "orbit-$CASE/status.txt"
+
+      - name: Record checksums
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          CASE='${{ matrix.case }}'
+          find "orbit-$CASE" -maxdepth 1 -type f ! -name SHA256SUMS.txt \
+            -print0 | sort -z | xargs -0 sha256sum > "orbit-$CASE/SHA256SUMS.txt"
+
+      - name: Upload orbit result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: math-0003-orbit-${{ matrix.case }}
+          path: orbit-${{ matrix.case }}/
+          if-no-files-found: error
+          retention-days: 90

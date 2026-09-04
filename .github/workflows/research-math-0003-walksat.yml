@@ -1,0 +1,75 @@
+name: research math-0003 focused local search
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - tools/kg12_walksat.cpp
+      - tools/kg12_r3_split_sat.py
+      - .github/workflows/research-math-0003-walksat.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  search:
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        branch: [matching, path]
+        seed: [1, 2, 3, 5, 8, 13, 21, 34]
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile focused search
+        run: g++ -O3 -march=native -std=c++17 tools/kg12_walksat.cpp -o kg12-walksat
+      - name: Run one independent search trajectory
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH='${{ matrix.branch }}'
+          SEED='${{ matrix.seed }}'
+          mkdir -p "walksat-$BRANCH-$SEED"
+          set +e
+          ./kg12-walksat "$BRANCH" "$SEED" 480 3000000 \
+            "walksat-$BRANCH-$SEED/model.out" \
+            > "walksat-$BRANCH-$SEED/stdout.txt" \
+            2> "walksat-$BRANCH-$SEED/stderr.txt"
+          code=$?
+          set -e
+          printf '%s\n' "$code" > "walksat-$BRANCH-$SEED/exit-code.txt"
+          if [ "$code" -eq 10 ]; then
+            python tools/kg12_r3_split_sat.py --branch "$BRANCH" verify-model \
+              --solver-output "walksat-$BRANCH-$SEED/model.out" \
+              --certificate "walksat-$BRANCH-$SEED/sat-certificate.json"
+            printf 'SAT_FULL_KG12_MODEL_VERIFIED\n' > "walksat-$BRANCH-$SEED/status.txt"
+          elif [ "$code" -eq 0 ]; then
+            printf 'NO_MODEL_FOUND_NONDECISIVE\n' > "walksat-$BRANCH-$SEED/status.txt"
+          else
+            printf 'SEARCH_ERROR_%s\n' "$code" > "walksat-$BRANCH-$SEED/status.txt"
+            exit 1
+          fi
+          cat "walksat-$BRANCH-$SEED/status.txt"
+      - name: Record checksums
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH='${{ matrix.branch }}'
+          SEED='${{ matrix.seed }}'
+          find "walksat-$BRANCH-$SEED" -maxdepth 1 -type f ! -name SHA256SUMS.txt \
+            -print0 | sort -z | xargs -0 sha256sum > "walksat-$BRANCH-$SEED/SHA256SUMS.txt"
+      - name: Upload trajectory result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: math-0003-walksat-${{ matrix.branch }}-${{ matrix.seed }}
+          path: walksat-${{ matrix.branch }}-${{ matrix.seed }}/
+          if-no-files-found: error
+          retention-days: 90

@@ -1,0 +1,59 @@
+name: inspect math-0003 trace10 artifact
+
+on:
+  push:
+    branches: [research/math-0003-exact-r3]
+    paths:
+      - .github/workflows/inspect-math-0003-trace10-artifact.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download certified trace10 artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/jiaxi1102/open-science-problems/actions/artifacts/9872854743/zip \
+            --output trace10.zip
+          unzip -q trace10.zip -d trace10
+          test -f trace10/status.txt
+          test -f trace10/instance-metadata.json
+          test -f trace10/kissat.exit-code.txt
+          printf 'STATUS=' | tee summary.txt
+          cat trace10/status.txt | tee -a summary.txt
+          printf 'EXIT_CODE=' | tee -a summary.txt
+          cat trace10/kissat.exit-code.txt | tee -a summary.txt
+          sha256sum trace10.zip trace10/status.txt trace10/instance-metadata.json \
+            trace10/kissat.out trace10/kissat.err | tee -a summary.txt
+          if test -f trace10/drat-trim.out; then
+            grep -E '^(c |s )|VERIFIED|NOT VERIFIED' trace10/drat-trim.out \
+              | tail -n 30 | tee drat-summary.txt
+          fi
+
+      - name: Upload compact trace10 summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: math-0003-trace10-summary
+          path: |
+            summary.txt
+            drat-summary.txt
+            trace10/status.txt
+            trace10/kissat.exit-code.txt
+            trace10/instance-metadata.json
+            trace10/kissat-version.txt
+            trace10/drat-trim.out
+            trace10/drat-trim.err
+            trace10/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 90
