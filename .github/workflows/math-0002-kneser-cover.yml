@@ -1,4 +1,4 @@
-name: math-0002 Kneser cover Lean verification
+name: math-0002 Kneser cover verification
 
 on:
   push:
@@ -23,13 +23,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate the strengthened finite certificate
+      - name: Run independent exhaustive NAE-SAT verifier
+        shell: bash
+        working-directory: problems/math-0002-kneser-fractional-cover/verification
+        run: |
+          g++ -O3 -std=c++20 -Wall -Wextra -pedantic \
+            nae_independence_obstruction.cpp -o nae_independence_obstruction
+          ./nae_independence_obstruction | tee nae-verification.txt
+          grep -E '^UNSAT k=11 tested=170352 overlap=129666 nodes=40027816 ' \
+            nae-verification.txt
+
+      - name: Generate the strengthened Lean certificate
         shell: bash
         working-directory: problems/math-0002-kneser-fractional-cover/formal
         run: |
           python generate_lean.py
-          python finalize_lean.py
-          sha256sum KneserCover.lean | tee generated-sha256.txt
+          echo "2a51c43c1f9ec8e0f2bbfa76cf7333dc1dcc53ded85a67ff5212a863647b68a9  KneserCover.lean" \
+            | sha256sum -c -
 
       - name: Reject unfinished or hand-written axiomatic shortcuts
         shell: bash
