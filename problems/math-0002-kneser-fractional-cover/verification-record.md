@@ -21,11 +21,14 @@ That workflow regenerated the certificate, checked its hash, rejected `sorry`,
 ## Strengthened \(14/5\) certificate
 
 - Branch: `math-0002-alpha10-strengthening`
-- Verified source commit: `39bc3335b158a1492365bbfb65b74f4c35bcbdf8`
+- Verified formal-source commit: `39bc3335b158a1492365bbfb65b74f4c35bcbdf8`
+- Final documentation commit: `0ff0ce1766376011e40f5a5ddc467945b4ce7bcf`
 - Pull request: `#12`
-- GitHub Actions run: `33892016237`
-- Job: `101085705498`
-- Conclusion: `success`
+- Formal-source GitHub Actions run: `33892016237`
+- Formal-source job: `101085705498`
+- Final-commit regression run: `33893238577`
+- Final-commit regression job: `101089707289`
+- Conclusions: `success`, `success`
 - Verified at: 4 September 2026
 - Runner: Ubuntu 24.04.4, image `ubuntu-24.04` version `20260831.293.1`
 - Lean: 4.33.1 (`819816b2e0a3bf405af45ae5c7af2491d8f5bee6`)
@@ -34,15 +37,19 @@ That workflow regenerated the certificate, checked its hash, rejected `sorry`,
   `e21c37179741f8ddcea0cfc96911da4e50f8c336dc4aa72798acaa5f3a0e6cdb`
 - Independent C++ verifier SHA-256:
   `8ce3435178190958292e87287113ff24af3aaa2a9bc5fde8aaae18a80e69f431`
-- Independent verifier time reported by CI: 31.9637 seconds
-- Lean build time reported by CI: 607 seconds
+- Independent verifier time reported by formal-source CI: 31.9637 seconds
+- Lean build time reported by formal-source CI: 607 seconds
+- Final-commit regression job duration: 60 seconds
 
-The clean pull-request workflow regenerated and hash-checked the final Lean
-source, rejected `sorry`, `admit`, and hand-written `axiom` declarations, and
-completed `lake build`. The independent C++ verifier reconstructed all 28
-Kneser vertices, 210 Kneser edges, and 420 Kneser triangles; checked the four
-deletion-pair orbit sizes `12, 30, 6, 30`; passed satisfiable and unsatisfiable
-solver self-tests; and exhaustively returned:
+Both clean pull-request workflows regenerated and hash-checked the Lean source,
+rejected `sorry`, `admit`, and hand-written `axiom` declarations, and completed
+`lake build`. The final-commit regression run repeated the C++ verification and
+all seven Lean builds after the verification record itself was updated.
+
+The independent C++ verifier reconstructed all 28 Kneser vertices, 210 Kneser
+edges, and 420 Kneser triangles; checked the four deletion-pair orbit sizes
+`12, 30, 6, 30`; passed satisfiable and unsatisfiable solver self-tests; and
+exhaustively returned:
 
 ```text
 center_spoke              2184 cases: 1819 direct, 365 solved UNSAT
