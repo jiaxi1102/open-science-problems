@@ -1,0 +1,4 @@
+Independent Python exhaustive search over all C(64,4)=635376 four-vertex subsets and then lexicographic five-vertex subsets.
+
+No 4-vertex Q2-isolating set in Q6.
+5-vertex witness: ('000000', '000011', '000101', '111001', '111110')
