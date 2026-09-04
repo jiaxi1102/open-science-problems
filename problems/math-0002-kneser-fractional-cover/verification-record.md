@@ -22,12 +22,12 @@ That workflow regenerated the certificate, checked its hash, rejected `sorry`,
 
 - Branch: `math-0002-alpha10-strengthening`
 - Verified formal-source commit: `39bc3335b158a1492365bbfb65b74f4c35bcbdf8`
-- Final documentation commit: `0ff0ce1766376011e40f5a5ddc467945b4ce7bcf`
+- Last fully rechecked branch commit: `0ff0ce1766376011e40f5a5ddc467945b4ce7bcf`
 - Pull request: `#12`
 - Formal-source GitHub Actions run: `33892016237`
 - Formal-source job: `101085705498`
-- Final-commit regression run: `33893238577`
-- Final-commit regression job: `101089707289`
+- Full-regression run: `33893238577`
+- Full-regression job: `101089707289`
 - Conclusions: `success`, `success`
 - Verified at: 4 September 2026
 - Runner: Ubuntu 24.04.4, image `ubuntu-24.04` version `20260831.293.1`
@@ -39,12 +39,14 @@ That workflow regenerated the certificate, checked its hash, rejected `sorry`,
   `8ce3435178190958292e87287113ff24af3aaa2a9bc5fde8aaae18a80e69f431`
 - Independent verifier time reported by formal-source CI: 31.9637 seconds
 - Lean build time reported by formal-source CI: 607 seconds
-- Final-commit regression job duration: 60 seconds
+- Full-regression job duration: 60 seconds
 
 Both clean pull-request workflows regenerated and hash-checked the Lean source,
 rejected `sorry`, `admit`, and hand-written `axiom` declarations, and completed
-`lake build`. The final-commit regression run repeated the C++ verification and
-all seven Lean builds after the verification record itself was updated.
+`lake build`. The full-regression run repeated the C++ verification and all
+seven Lean builds after the formal and documentation package was assembled.
+Subsequent edits to this record do not alter theorem, verifier, generator, or
+workflow sources.
 
 The independent C++ verifier reconstructed all 28 Kneser vertices, 210 Kneser
 edges, and 420 Kneser triangles; checked the four deletion-pair orbit sizes
