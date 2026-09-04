@@ -1,6 +1,7 @@
 import Lean
 import HypercubeIsolation.CubeCopies
 import HypercubeIsolation.StructuralTheory
+import HypercubeIsolation.QuantitativeGap
 
 set_option maxHeartbeats 0
 set_option maxRecDepth 100000
