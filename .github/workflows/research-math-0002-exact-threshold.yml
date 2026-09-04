@@ -1,0 +1,189 @@
+name: research math-0002 exact threshold certificates
+
+on:
+  push:
+    branches: [research/math-0002-exact-threshold]
+    paths:
+      - problems/math-0002-kneser-fractional-cover/experiments/exact-threshold/**
+      - .github/workflows/research-math-0002-exact-threshold.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-math-0002-exact-threshold-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  certify:
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [petersen, petersen-template]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Self-test generator and create canonical CNF
+        id: generate
+        shell: bash
+        working-directory: problems/math-0002-kneser-fractional-cover/experiments/exact-threshold
+        run: |
+          set -euo pipefail
+          echo "06d8f8df57e7d029581091a2130456386843afc17af349b62265d4c7ac028585  exact_threshold_search.py" \
+            | sha256sum --check --strict
+          python exact_threshold_search.py self-test
+          mkdir -p "results/${{ matrix.mode }}"
+          python exact_threshold_search.py generate \
+            "${{ matrix.mode }}" "results/${{ matrix.mode }}" \
+            | tee "results/${{ matrix.mode }}/generation.json"
+          case "${{ matrix.mode }}" in
+            petersen)
+              cnf_hash=f1e846f3bb2c6a05a997d3d6f85102f5d365176c990bb8ec9a1633a01b8803be
+              metadata_hash=5d5a01be5ae121790323393b554e3fb1e8978f87f62a5943bb43e3c616027d36
+              ;;
+            petersen-template)
+              cnf_hash=3119d5c5b04f8a7c8c3a096bf31af04f40e71fec1de985256a55d34d388628c8
+              metadata_hash=8d05d7c6a0269851535609bde99ceea0e351d7558552d4d54bb303453844979c
+              ;;
+            *) exit 2 ;;
+          esac
+          echo "$cnf_hash  results/${{ matrix.mode }}/${{ matrix.mode }}.cnf" \
+            | sha256sum --check --strict
+          echo "$metadata_hash  results/${{ matrix.mode }}/${{ matrix.mode }}.json" \
+            | sha256sum --check --strict
+
+      - name: Build pinned CaDiCaL and independent DRAT checker
+        shell: bash
+        run: |
+          set -euo pipefail
+          CADICAL_COMMIT=c60730422e758ef1cebe7aeddf2dda31c996bf04
+          DRAT_TRIM_COMMIT=2e3b2dc0ecf938addbd779d42877b6ed69d9a985
+
+          git clone --quiet https://github.com/arminbiere/cadical.git "$RUNNER_TEMP/cadical"
+          git -C "$RUNNER_TEMP/cadical" checkout --quiet "$CADICAL_COMMIT"
+          test "$(git -C "$RUNNER_TEMP/cadical" rev-parse HEAD)" = "$CADICAL_COMMIT"
+          (cd "$RUNNER_TEMP/cadical" && ./configure --quiet && make -j2)
+
+          git clone --quiet https://github.com/marijnheule/drat-trim.git "$RUNNER_TEMP/drat-trim"
+          git -C "$RUNNER_TEMP/drat-trim" checkout --quiet "$DRAT_TRIM_COMMIT"
+          test "$(git -C "$RUNNER_TEMP/drat-trim" rev-parse HEAD)" = "$DRAT_TRIM_COMMIT"
+          make -C "$RUNNER_TEMP/drat-trim"
+
+          echo "CADICAL=$RUNNER_TEMP/cadical/build/cadical" >> "$GITHUB_ENV"
+          echo "DRAT_TRIM=$RUNNER_TEMP/drat-trim/drat-trim" >> "$GITHUB_ENV"
+          "$RUNNER_TEMP/cadical/build/cadical" --version | tee cadical-version.txt
+          sha256sum "$RUNNER_TEMP/cadical/build/cadical" | tee cadical-binary.sha256
+          sha256sum "$RUNNER_TEMP/drat-trim/drat-trim" | tee drat-trim-binary.sha256
+          printf '%s\n%s\n' "$CADICAL_COMMIT" "$DRAT_TRIM_COMMIT" > solver-source-commits.txt
+
+      - name: Solve and require a checkable certificate
+        id: solve
+        shell: bash
+        working-directory: problems/math-0002-kneser-fractional-cover/experiments/exact-threshold
+        run: |
+          set -uo pipefail
+          mode="${{ matrix.mode }}"
+          result="results/$mode"
+          cnf="$result/$mode.cnf"
+          proof="$result/$mode.drat"
+          stdout="$result/cadical.out"
+          stderr="$result/cadical.err"
+
+          set +e
+          timeout --signal=TERM --kill-after=30s 3000s \
+            "$CADICAL" --no-binary "$cnf" "$proof" \
+            > "$stdout" 2> "$stderr"
+          code=$?
+          set -e
+          echo "$code" > "$result/cadical-exit-code.txt"
+
+          if [[ "$code" -eq 20 ]]; then
+            test -s "$proof"
+            set +e
+            "$DRAT_TRIM" "$cnf" "$proof" \
+              | tee "$result/drat-trim.out"
+            checker_code=${PIPESTATUS[0]}
+            set -e
+            echo "$checker_code" > "$result/drat-trim-exit-code.txt"
+            # drat-trim reports a verified refutation with exit code 1 on this
+            # pinned revision, so the semantic success line—not shell zero—is
+            # the fail-closed acceptance condition.
+            grep -qx 's VERIFIED' "$result/drat-trim.out"
+            status=UNSAT_DRAT_VERIFIED
+          elif [[ "$code" -eq 10 ]]; then
+            python exact_threshold_search.py verify "$mode" "$result" "$stdout" \
+              | tee "$result/model-check.out"
+            status=SAT_MODEL_VERIFIED
+          elif [[ "$code" -eq 124 || "$code" -eq 137 || "$code" -eq 143 ]]; then
+            status=TIMEOUT_NO_CLAIM
+          else
+            status=SOLVER_ERROR_NO_CLAIM
+          fi
+
+          STATUS="$status" MODE="$mode" RESULT="$result" python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          result = Path(os.environ["RESULT"])
+          files = {}
+          for path in sorted(result.iterdir()):
+              if path.is_file():
+                  files[path.name] = {
+                      "bytes": path.stat().st_size,
+                      "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                  }
+          record = {
+              "mode": os.environ["MODE"],
+              "status": os.environ["STATUS"],
+              "mathematical_claim": (
+                  "counterexample model" if os.environ["STATUS"] == "SAT_MODEL_VERIFIED"
+                  else "certified UNSAT" if os.environ["STATUS"] == "UNSAT_DRAT_VERIFIED"
+                  else "none"
+              ),
+              "files": files,
+          }
+          (result / "certificate-record.json").write_text(
+              json.dumps(record, indent=2, sort_keys=True) + "\n"
+          )
+          print(json.dumps(record, indent=2, sort_keys=True))
+          PY
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+
+          [[ "$status" == UNSAT_DRAT_VERIFIED || "$status" == SAT_MODEL_VERIFIED ]]
+
+      - name: Summarize certificate status
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## ${{ matrix.mode }}"
+            echo
+            echo "Status: \`${{ steps.solve.outputs.status || 'job-failed-before-certificate' }}\`"
+            echo
+            record="problems/math-0002-kneser-fractional-cover/experiments/exact-threshold/results/${{ matrix.mode }}/certificate-record.json"
+            if [[ -f "$record" ]]; then
+              echo '```json'
+              cat "$record"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload certificate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: math-0002-${{ matrix.mode }}-certificate
+          path: |
+            problems/math-0002-kneser-fractional-cover/experiments/exact-threshold/results/${{ matrix.mode }}/
+            cadical-version.txt
+            cadical-binary.sha256
+            drat-trim-binary.sha256
+            solver-source-commits.txt
+          if-no-files-found: error
+          retention-days: 30
