@@ -26,22 +26,24 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install pinned untrusted proof producer
-        run: python -m pip install z3-solver==4.13.3.0
-      - name: Generate geometry, check RUP, reconstruct Lean terms
-        run: python problems/math-0004-empty-intersection-ramsey/experiments/build_certificate.py --out problems/math-0004-empty-intersection-ramsey/formal
+      - run: python -m pip install z3-solver==4.13.3.0
+      - name: Reconstruct small lemmas and geometric data
+        run: python problems/math-0004-empty-intersection-ramsey/experiments/build_structured.py --out problems/math-0004-empty-intersection-ramsey/formal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: empty-intersection-generated-unverified
+          path: problems/math-0004-empty-intersection-ramsey/
+          retention-days: 30
       - name: Reject unchecked shortcuts
         working-directory: problems/math-0004-empty-intersection-ramsey/formal
         run: |
-          if grep -RInE --include='*.lean' '\b(sorry|admit|native_decide|bv_decide)\b|^[[:space:]]*axiom[[:space:]]' .; then
-            exit 1
-          fi
+          if grep -RInE --include='*.lean' '\b(sorry|admit|native_decide|bv_decide)\b|^[[:space:]]*axiom[[:space:]]' .; then exit 1; fi
       - name: Install Lean
         shell: bash
         run: |
           curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
-      - name: Check generated resolution proof
+      - name: Check resolution and geometric Ramsey theorem
         shell: bash
         working-directory: problems/math-0004-empty-intersection-ramsey/formal
         run: |
@@ -51,29 +53,39 @@ jobs:
           python - <<'PY'
           import pathlib, re
           text = pathlib.Path('build.log').read_text()
-          name = 'EmptyIntersection.impossible'
-          matches = re.findall(re.escape("'"+name+"'") + r' depends on axioms:\s*\[([^\]]*)\]', text)
-          if not matches:
-              raise SystemExit('Missing exact theorem audit')
-          for match in matches:
-              used = {s.strip() for s in match.split(',') if s.strip()}
-              if not used <= {'propext', 'Classical.choice', 'Quot.sound'}:
-                  raise SystemExit('Unexpected axiom dependencies: '+str(used))
-          print('PASS: exact theorem axiom audit')
+          for name in ['EmptyIntersection.impossible', 'EmptyIntersection.finiteIntersectionRamsey']:
+              matches = re.findall(re.escape("'"+name+"'") + r' depends on axioms:\s*\[([^\]]*)\]', text)
+              if not matches:
+                  raise SystemExit('Missing exact theorem audit for '+name)
+              for match in matches:
+                  used = {s.strip() for s in match.split(',') if s.strip()}
+                  if not used <= {'propext', 'Classical.choice', 'Quot.sound'}:
+                      raise SystemExit('Unexpected axiom dependencies: '+str(used))
+              print('PASS: '+name)
           PY
-      - name: Record provenance
-        if: always()
+      - name: Record provenance and hashes
+        shell: bash
         run: |
           git rev-parse HEAD > problems/math-0004-empty-intersection-ramsey/formal/SOURCE_COMMIT.txt
           printf '%s\n' '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' > problems/math-0004-empty-intersection-ramsey/formal/RUN.txt
+          cd problems/math-0004-empty-intersection-ramsey
+          find . -type f -not -path './formal/.lake/*' -not -path '*/__pycache__/*' -not -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: success()
         with:
-          name: empty-intersection-proof-evidence
+          name: empty-intersection-verified
           path: |
+            problems/math-0004-empty-intersection-ramsey/experiments/*.py
             problems/math-0004-empty-intersection-ramsey/formal/*.lean
             problems/math-0004-empty-intersection-ramsey/formal/*.json
             problems/math-0004-empty-intersection-ramsey/formal/*.txt
             problems/math-0004-empty-intersection-ramsey/formal/*.log
             problems/math-0004-empty-intersection-ramsey/formal/lean-toolchain
+            problems/math-0004-empty-intersection-ramsey/SHA256SUMS
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: empty-intersection-failed-build-log
+          path: problems/math-0004-empty-intersection-ramsey/formal/build.log
           retention-days: 30
