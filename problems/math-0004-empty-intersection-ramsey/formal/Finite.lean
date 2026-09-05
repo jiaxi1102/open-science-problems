@@ -26,10 +26,8 @@ theorem finiteIntersectionRamsey (color : Vertex → Vertex → Bool) :
         (color (row j).1 (row j).2.2)
         (color (row j).2.1 (row j).2.2) hn
       have hab := edgeLookup (row j).1 (row j).2.1 hv.1
-      have hac := edgeLookup (row j).1 (row j).2.2 (by
-        have h1 := hv.1
-        have h2 := hv.2.1
-        omega)
+      have hac := edgeLookup (row j).1 (row j).2.2
+        (Nat.lt_trans hv.1 hv.2.1)
       have hbc := edgeLookup (row j).2.1 (row j).2.2 hv.2.1
       have hh : positive p (row j) ∧ negative p (row j) := by
         simpa only [positive, negative, p, hab, hac, hbc] using hb
