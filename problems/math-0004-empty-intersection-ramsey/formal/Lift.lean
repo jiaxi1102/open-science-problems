@@ -38,9 +38,19 @@ theorem liftVertex_injective (q : Nat) (hq : 0 < q) :
   have heq : baseSet a = baseSet b := by
     apply Finset.ext
     intro x
-    have hm := congrArg
-      (fun S : Finset (Fin 6 × Fin q) => (x, (⟨0, hq⟩ : Fin q)) ∈ S) hab
-    simpa only [Finset.mem_product, Finset.mem_univ, and_true] using Iff.of_eq hm
+    constructor
+    · intro hx
+      have hp : (x, (⟨0, hq⟩ : Fin q)) ∈
+          (baseSet a).product (Finset.univ : Finset (Fin q)) :=
+        Finset.mem_product.mpr ⟨hx, Finset.mem_univ _⟩
+      rw [hab] at hp
+      exact (Finset.mem_product.mp hp).1
+    · intro hx
+      have hp : (x, (⟨0, hq⟩ : Fin q)) ∈
+          (baseSet b).product (Finset.univ : Finset (Fin q)) :=
+        Finset.mem_product.mpr ⟨hx, Finset.mem_univ _⟩
+      rw [← hab] at hp
+      exact (Finset.mem_product.mp hp).1
   by_contra hne
   exact baseSet_ne a b hne heq
 
@@ -59,9 +69,10 @@ theorem liftVertex_empty (q : Nat) (a b c : Vertex) (he : EmptyTriple a b c) :
     have hxc := (Finset.mem_product.mp (Finset.mem_inter.mp hx).2).1
     have hm : x.1 ∈ baseSet a ∩ baseSet b ∩ baseSet c :=
       Finset.mem_inter.mpr ⟨Finset.mem_inter.mpr ⟨hxa, hxb⟩, hxc⟩
-    simpa only [baseSet_empty a b c he] using hm
+    rw [baseSet_empty a b c he] at hm
+    simp at hm
   · intro hx
-    simpa using hx
+    simp at hx
 
 /-- The ground set has exactly 6q points. -/
 theorem ground_card (q : Nat) : Fintype.card (Fin 6 × Fin q) = 6 * q := by
