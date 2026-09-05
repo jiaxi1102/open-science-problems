@@ -25,7 +25,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install python-sat==1.8.dev13
+      - run: python -m pip install python-sat==1.8.dev24
       - name: Bounded exact search
         run: python experiments/empty_intersection/frontier.py --n ${{ matrix.n }} --k ${{ matrix.k }} --seconds 240 --out frontier
       - uses: actions/upload-artifact@v4
