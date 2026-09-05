@@ -1,38 +1,35 @@
 import KneserFivePoint.LowerBound
 
 /-!
-# Padded five-point construction for asymmetric Kneser Ramsey numbers
+# Padded five-point asymmetric Kneser Ramsey bound
 
-An explicit coloring witnesses `R_r^KG(s,3) >= s*(r+1)` for every `r >= 1`
-and `s >= 3`. A tagged vertex meets a padding set of size `s-3`.
-Tagged vertices are red-adjacent to all types except untagged empty traces.
-All other edges use the original five-point coloring.
+Constructs a red-K_s/blue-K_3 avoiding coloring on s*(r+1)-1 points.
 -/
-
 namespace KneserFivePoint
-
 set_option maxRecDepth 10000
 set_option maxHeartbeats 0
 
 abbrev PaddingTrace := Option (Finset (Fin 5))
 
-/-- `none` denotes a tagged vertex; `some a` an untagged trace. -/
+/-- `none` is tagged, `some a` is an untagged five-point trace. -/
 def paddingRed : PaddingTrace → PaddingTrace → Bool
   | none, none => true
   | none, some b => decide b.Nonempty
   | some a, none => decide a.Nonempty
   | some a, some b => red (maskOfTrace a) (maskOfTrace b)
 
-/-- Untagged traces must be disjoint; tagged traces impose no constraint. -/
 def compatibleTrace : PaddingTrace → PaddingTrace → Prop
   | some a, some b => Disjoint a b
   | _, _ => True
+
+instance (a b : PaddingTrace) : Decidable (compatibleTrace a b) := by
+  cases a <;> cases b <;> dsimp [compatibleTrace] <;> infer_instance
 
 theorem paddingRed_symm : ∀ a b, paddingRed a b = paddingRed b a := by
   intro a b
   cases a <;> cases b <;> simp [paddingRed, red_symm]
 
-/-- The blue template is triangle-free without a coverage assumption. -/
+/-- No blue template triangle, without any coverage assumption. -/
 theorem padding_blue_triangle_free :
     ∀ a b c : PaddingTrace,
       compatibleTrace a b → compatibleTrace a c → compatibleTrace b c →
@@ -40,13 +37,12 @@ theorem padding_blue_triangle_free :
          paddingRed b c = false) := by
   decide +kernel
 
-/-- A red neighbor of the empty trace is untagged with size at most one. -/
+/-- Red neighbors of the empty trace are untagged and have size at most one. -/
 theorem padding_empty_interface :
     ∀ x : PaddingTrace, paddingRed (some ∅) x = true →
       ∃ a : Finset (Fin 5), x = some a ∧ a.card ≤ 1 := by
   decide +kernel
 
-/-- Nonempty disjoint untagged traces cannot form a red triangle. -/
 theorem nonempty_red_triangle_free :
     ∀ a b c : Finset (Fin 5),
       a.Nonempty → b.Nonempty → c.Nonempty →
@@ -56,11 +52,9 @@ theorem nonempty_red_triangle_free :
          paddingRed (some b) (some c) = true) := by
   decide +kernel
 
-/-- Pull back a subset along the five-point embedding. -/
 def traceOn {n : Nat} (e : Fin 5 ↪ Fin n) (A : Finset (Fin n)) :
     Finset (Fin 5) := Finset.univ.filter fun i => e i ∈ A
 
-/-- Mark sets meeting the padding set; otherwise retain the trace. -/
 def paddingCode {n : Nat} (e : Fin 5 ↪ Fin n) (D A : Finset (Fin n)) :
     PaddingTrace :=
   if (A ∩ D).Nonempty then none else some (traceOn e A)
@@ -80,7 +74,7 @@ theorem paddingCode_compatible {n : Nat} (e : Fin 5 ↪ Fin n)
   all_goals simp [paddingCode, ha, hb, compatibleTrace]
   exact traceOn_disjoint e h
 
-/-- Select one distinct padding point from each tagged disjoint set. -/
+/-- Select a different padding point from each tagged disjoint set. -/
 theorem count_tagged_le {n s : Nat} (D : Finset (Fin n))
     (A : Fin s → Finset (Fin n))
     (hdis : Pairwise fun i j => Disjoint (A i) (A j)) :
@@ -101,7 +95,7 @@ theorem count_tagged_le {n s : Nat} (D : Finset (Fin n))
     exact Finset.disjoint_left.mp (hdis hne) hi (by simpa only [heq] using hj)
   exact Finset.card_le_card_of_injective hf
 
-/-- Red families have at most two untagged nonempty traces. -/
+/-- At most two untagged nonempty traces can occur in a red family. -/
 theorem count_nonempty_untagged_le_two {n s : Nat} (e : Fin 5 ↪ Fin n)
     (D : Finset (Fin n)) (A : Fin s → Finset (Fin n))
     (hdis : Pairwise fun i j => Disjoint (A i) (A j))
@@ -127,7 +121,6 @@ theorem count_nonempty_untagged_le_two {n s : Nat} (e : Fin 5 ↪ Fin n)
   · simpa [paddingCode,hiD,hkD] using hred i k hik
   · simpa [paddingCode,hjD,hkD] using hred j k hjk
 
-/-- A red s-family must have an untagged empty trace. -/
 theorem red_family_has_empty {n s : Nat} (hs : 3 ≤ s)
     (e : Fin 5 ↪ Fin n) (D : Finset (Fin n)) (hD : D.card = s-3)
     (A : Fin s → Finset (Fin n))
@@ -146,20 +139,19 @@ theorem red_family_has_empty {n s : Nat} (hs : 3 ≤ s)
   have hcover : (Finset.univ : Finset (Fin s)) ⊆ T ∪ N := by
     intro i _
     by_cases hi : (A i ∩ D).Nonempty
-    · simp [T,hi]
+    · exact Finset.mem_union.mpr (Or.inl (Finset.mem_filter.mpr ⟨Finset.mem_univ _,hi⟩))
     · have hp : (traceOn e (A i)).Nonempty := by
         apply Finset.nonempty_iff_ne_empty.mpr
         intro hempty
         exact he ⟨i,hi,hempty⟩
-      simp [T,N,hi,hp]
+      exact Finset.mem_union.mpr (Or.inr (Finset.mem_filter.mpr ⟨Finset.mem_univ _,hi,hp⟩))
   have hc : s ≤ T.card + N.card := by
     calc
       s = (Finset.univ : Finset (Fin s)).card := by simp
       _ ≤ (T ∪ N).card := Finset.card_le_card hcover
-      _ ≤ T.card + N.card := Finset.card_union_le
+      _ ≤ T.card + N.card := Finset.card_union_le T N
   omega
 
-/-- All members of a red s-family are untagged with trace size at most one. -/
 theorem red_family_small_traces {n s : Nat} (hs : 3 ≤ s)
     (e : Fin 5 ↪ Fin n) (D : Finset (Fin n)) (hD : D.card = s-3)
     (A : Fin s → Finset (Fin n))
@@ -182,7 +174,6 @@ theorem red_family_small_traces {n s : Nat} (hs : 3 ≤ s)
       simpa [paddingCode,hd] using ha
     exact ⟨hd, by simpa [heq] using hcard⟩
 
-/-- A red s-family covers at most two of the five cycle points. -/
 theorem red_family_trace_union_le_two {n s : Nat} (hs : 3 ≤ s)
     (e : Fin 5 ↪ Fin n) (D : Finset (Fin n)) (hD : D.card = s-3)
     (A : Fin s → Finset (Fin n))
@@ -210,7 +201,7 @@ theorem red_family_trace_union_le_two {n s : Nat} (hs : 3 ≤ s)
     _ = N.card := by simp
     _ ≤ 2 := hn
 
-/-- Counting obstruction: the coloring contains no red s-clique. -/
+/-- Missing-ground-point count rules out the red s-clique. -/
 theorem padding_no_red_clique {n r s : Nat} (hs : 3 ≤ s)
     (hn : n = s*r+s-1) (e : Fin 5 ↪ Fin n)
     (D : Finset (Fin n)) (hD : D.card = s-3)
@@ -269,7 +260,7 @@ theorem padding_no_red_clique {n r s : Nat} (hs : 3 ≤ s)
     simpa [Q] using Finset.card_sdiff_add_card_inter (Finset.univ : Finset (Fin 5)) P
   omega
 
-/-- Direct witness form of the asymmetric Kneser Ramsey lower bound. -/
+/-- Explicit symmetric coloring with neither a red s-clique nor a blue triangle. -/
 def KneserAsymmetricAvoiding (n r s : Nat) : Prop :=
   ∃ color : KneserVertex n r → KneserVertex n r → Bool,
     (∀ A B, color A B = color B A) ∧
@@ -279,7 +270,7 @@ def KneserAsymmetricAvoiding (n r s : Nat) : Prop :=
     (∀ A B C, Disjoint A.1 B.1 → Disjoint A.1 C.1 → Disjoint B.1 C.1 →
       ¬ (color A B = false ∧ color A C = false ∧ color B C = false))
 
-/-- End-to-end witness for `R_r^KG(s,3) >= s*(r+1)`. -/
+/-- Witness for `R_r^KG(s,3) >= s*(r+1)`. -/
 theorem kneserRamsey_asymmetric_lower_bound (r s : Nat) (hr : 1 ≤ r) (hs : 3 ≤ s) :
     KneserAsymmetricAvoiding (s*(r+1)-1) r s := by
   classical
@@ -310,7 +301,8 @@ theorem kneserRamsey_asymmetric_lower_bound (r s : Nat) (hr : 1 ≤ r) (hs : 3 �
     obtain ⟨j,_,hj⟩ := Finset.mem_map.mp hy
     have he : d i = e j := hi.trans hj.symm
     have hv := congrArg (fun x : Fin n => x.val) he
-    dsimp [d,e] at hv
+    change 5 + i.val = j.val at hv
+    have hjlt := j.isLt
     omega
   refine ⟨fun A B => paddingRed (paddingCode e D A.1) (paddingCode e D B.1),?_,?_,?_⟩
   · intro A B
@@ -324,5 +316,4 @@ theorem kneserRamsey_asymmetric_lower_bound (r s : Nat) (hr : 1 ≤ r) (hs : 3 �
 
 #print axioms KneserFivePoint.padding_blue_triangle_free
 #print axioms KneserFivePoint.kneserRamsey_asymmetric_lower_bound
-
 end KneserFivePoint
