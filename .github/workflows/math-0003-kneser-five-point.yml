@@ -34,10 +34,14 @@ jobs:
           python-version: '3.12'
 
       - name: Verify all trace partitions and r=1..4 regressions
-        run: python tools/verify_kneser_five_point.py
+        run: |
+          python tools/verify_kneser_five_point.py > five-point-verification.json
+          cat five-point-verification.json
 
       - name: Verify asymmetric padding for s=3..8
-        run: python tools/verify_kneser_padding.py
+        run: |
+          python tools/verify_kneser_padding.py > padding-verification.json
+          cat padding-verification.json
 
       - name: Reject unfinished or hand-written axiomatic shortcuts
         shell: bash
@@ -91,3 +95,35 @@ jobs:
                   raise SystemExit('Unexpected axioms for ' + name + ': ' + str(used - allowed))
               print('PASS', name, sorted(used))
           PY
+
+      - name: Package verified source and evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p verified-kneser
+          git archive HEAD \
+            problems/math-0003-kneser-ramsey-lower-bound \
+            tools/verify_kneser_five_point.py \
+            tools/verify_kneser_padding.py \
+            .github/workflows/math-0003-kneser-five-point.yml \
+            | tar -x -C verified-kneser
+          cp five-point-verification.json padding-verification.json verified-kneser/
+          cp problems/math-0003-kneser-ramsey-lower-bound/formal/theorem-axioms.txt verified-kneser/
+          git rev-parse HEAD > verified-kneser/SOURCE_COMMIT.txt
+          printf '%s\n' "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" > verified-kneser/VERIFICATION_RUN.txt
+          python - <<'PY'
+          import hashlib, pathlib
+          root = pathlib.Path('verified-kneser')
+          lines = [hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.relative_to(root).as_posix()
+                   for p in sorted(root.rglob('*')) if p.is_file()]
+          (root / 'SHA256SUMS').write_text('\n'.join(lines) + '\n')
+          PY
+
+      - name: Upload verified theorem package
+        uses: actions/upload-artifact@v4
+        with:
+          name: kneser-asymmetric-verified
+          path: verified-kneser/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
