@@ -17,12 +17,18 @@ jobs:
       - name: Package compiler and libraries
         run: |
           cd "$HOME/.elan/toolchains/leanprover--lean4---v4.33.1"
-          du -sh bin lib include
-          tar --zstd -cf "$RUNNER_TEMP/lean-4.33.1-portable.tar.zst" bin lib include
-          ls -lh "$RUNNER_TEMP/lean-4.33.1-portable.tar.zst"
+          tar --zstd -cf "$RUNNER_TEMP/lean.tar.zst" bin lib include
+          split -b 400M -d "$RUNNER_TEMP/lean.tar.zst" "$RUNNER_TEMP/lean-part-"
+          ls -lh "$RUNNER_TEMP"/lean-part-*
       - uses: actions/upload-artifact@v4
         with:
-          name: lean-4.33.1-portable
+          name: lean-part-00
           compression-level: 0
           retention-days: 1
-          path: ${{ runner.temp }}/lean-4.33.1-portable.tar.zst
+          path: ${{ runner.temp }}/lean-part-00
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lean-part-01
+          compression-level: 0
+          retention-days: 1
+          path: ${{ runner.temp }}/lean-part-01
