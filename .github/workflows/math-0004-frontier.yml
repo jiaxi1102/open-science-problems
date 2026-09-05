@@ -1,0 +1,36 @@
+name: math-0004 strict-majority exploration
+on:
+  push:
+    branches: [math-0004-empty-intersection-ramsey]
+    paths:
+      - experiments/empty_intersection/frontier.py
+      - .github/workflows/math-0004-frontier.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - n: 9
+            k: 5
+          - n: 11
+            k: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install python-sat==1.8.dev24
+      - name: Bounded exact search
+        run: python experiments/empty_intersection/frontier.py --n ${{ matrix.n }} --k ${{ matrix.k }} --seconds 240 --out frontier
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: intersection-${{ matrix.n }}-${{ matrix.k }}-discovery
+          path: frontier/
+          retention-days: 30

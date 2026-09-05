@@ -1,0 +1,10 @@
+{
+  "workflow_run": 33943989879,
+  "source_commit": "6ed7a6be8c5a9b1928a650111b329f96ef1c94a1",
+  "method": "unrestricted CaDiCaL195 via python-sat 1.8.dev24",
+  "cases": [
+    {"n":9,"k":5,"vertices":126,"edge_variables":7875,"forbidden_triples":31500,"clauses":63000,"solver_result":"UNKNOWN","reason":"wall-clock budget exhausted","budget_seconds":240,"proof_status":"none","artifact_id":9962784970,"archive_sha256":"d0b8da3cd72f6620a71509aa92d6707d77e1ac1eeda45fe96f27f0b8b301a373"},
+    {"n":11,"k":6,"vertices":462,"edge_variables":106491,"forbidden_triples":1096480,"clauses":2192960,"solver_result":"UNKNOWN","reason":"wall-clock budget exhausted","budget_seconds":240,"proof_status":"none","artifact_id":9962783582,"archive_sha256":"652e85bfc3b41e2ba6abd3930cce3681f958b4cfd21c147017cf559eccff4d66"}
+  ],
+  "scope": "Neither strict-majority case has been decided. A successful workflow does not imply a mathematical decision."
+}
