@@ -6,16 +6,22 @@ on:
     paths:
       - problems/math-0003-kneser-ramsey-lower-bound/**
       - tools/verify_kneser_five_point.py
+      - tools/verify_kneser_padding.py
       - .github/workflows/math-0003-kneser-five-point.yml
   pull_request:
     paths:
       - problems/math-0003-kneser-ramsey-lower-bound/**
       - tools/verify_kneser_five_point.py
+      - tools/verify_kneser_padding.py
       - .github/workflows/math-0003-kneser-five-point.yml
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   verify:
@@ -30,6 +36,9 @@ jobs:
       - name: Verify all trace partitions and r=1..4 regressions
         run: python tools/verify_kneser_five_point.py
 
+      - name: Verify asymmetric padding for s=3..8
+        run: python tools/verify_kneser_padding.py
+
       - name: Reject unfinished or hand-written axiomatic shortcuts
         shell: bash
         working-directory: problems/math-0003-kneser-ramsey-lower-bound/formal
@@ -43,7 +52,7 @@ jobs:
             exit 1
           fi
 
-      - name: Build end-to-end Lean lower bound
+      - name: Build diagonal and asymmetric Lean lower bounds
         uses: leanprover/lean-action@v1
         env:
           LEAN_NUM_THREADS: '1'
@@ -56,3 +65,29 @@ jobs:
           axiom-audit: true
           axiom-audit-root: KneserFivePoint
           axiom-audit-allow: propext,Classical.choice,Quot.sound
+
+      - name: Audit the actual final theorem declarations
+        shell: bash
+        working-directory: problems/math-0003-kneser-ramsey-lower-bound/formal
+        run: |
+          set -euo pipefail
+          lake env lean Audit.lean | tee theorem-axioms.txt
+          python - <<'PY'
+          import pathlib, re
+          text = pathlib.Path('theorem-axioms.txt').read_text()
+          allowed = {'propext', 'Classical.choice', 'Quot.sound'}
+          names = [
+              'KneserFivePoint.kneserRamsey_three_three_lower_bound',
+              'KneserFivePoint.padding_blue_triangle_free',
+              'KneserFivePoint.kneserRamsey_asymmetric_lower_bound',
+          ]
+          for name in names:
+              pattern = re.escape("'" + name + "'") + r' depends on axioms:\s*\[([^\]]*)\]'
+              match = re.search(pattern, text)
+              if match is None:
+                  raise SystemExit('Missing explicit axiom output for ' + name)
+              used = {x.strip() for x in match.group(1).split(',') if x.strip()}
+              if not used <= allowed:
+                  raise SystemExit('Unexpected axioms for ' + name + ': ' + str(used - allowed))
+              print('PASS', name, sorted(used))
+          PY
