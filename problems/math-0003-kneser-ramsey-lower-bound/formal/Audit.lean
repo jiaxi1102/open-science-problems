@@ -1,0 +1,5 @@
+import KneserFivePoint.Asymmetric
+
+#print axioms KneserFivePoint.kneserRamsey_three_three_lower_bound
+#print axioms KneserFivePoint.padding_blue_triangle_free
+#print axioms KneserFivePoint.kneserRamsey_asymmetric_lower_bound
