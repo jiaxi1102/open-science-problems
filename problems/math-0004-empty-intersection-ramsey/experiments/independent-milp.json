@@ -1,0 +1,11 @@
+{
+  "vertices": 20,
+  "variables": 190,
+  "forbidden_triples": 480,
+  "status": 2,
+  "message": "The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is None)",
+  "scipy_version": "1.17.0",
+  "seconds": 6.943890177999492,
+  "method": "SciPy/HiGHS MILP, set-based generator, no symmetry assumptions",
+  "trust_boundary": "Supplementary computation, not a formally checked certificate"
+}
